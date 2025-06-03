@@ -88,7 +88,7 @@ export class KeychainManager {
           }
         });
       });
-      console.log('✅ Tokens cleared from Keychain');
+      // Tokens cleared successfully
     } catch (error) {
       if (!error.message.includes('not found')) {
         throw new Error(`Failed to clear tokens from Keychain: ${error.message}`);

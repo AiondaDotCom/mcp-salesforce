@@ -184,14 +184,11 @@ export class TokenManager {
 
       if (response.ok) {
         const data = await response.json();
-        console.log('✅ Token validation successful');
         return { valid: true, apiVersions: data.length };
       } else {
-        console.error('❌ Token validation failed:', response.status);
         return { valid: false, error: response.status };
       }
     } catch (error) {
-      console.error('❌ Token test failed:', error.message);
       return { valid: false, error: error.message };
     }
   }

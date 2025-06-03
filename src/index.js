@@ -119,32 +119,24 @@ class MCPSalesforceServer {
   async run() {
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
-    
-    // Log server start (to stderr so it doesn't interfere with MCP protocol)
-    console.error('🚀 MCP Salesforce Server started successfully');
-    console.error(`📊 Environment: ${process.env.SALESFORCE_INSTANCE_URL}`);
   }
 }
 
 // Handle graceful shutdown
 process.on('SIGINT', () => {
-  console.error('\n🛑 Shutting down MCP Salesforce Server...');
   process.exit(0);
 });
 
 process.on('SIGTERM', () => {
-  console.error('\n🛑 Shutting down MCP Salesforce Server...');
   process.exit(0);
 });
 
 // Handle unhandled errors
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
   process.exit(1);
 });
 
 process.on('uncaughtException', (error) => {
-  console.error('❌ Uncaught Exception:', error);
   process.exit(1);
 });
 
@@ -152,7 +144,6 @@ process.on('uncaughtException', (error) => {
 if (import.meta.url === `file://${process.argv[1]}`) {
   const server = new MCPSalesforceServer();
   server.run().catch(error => {
-    console.error('❌ Failed to start MCP Salesforce Server:', error);
     process.exit(1);
   });
 }

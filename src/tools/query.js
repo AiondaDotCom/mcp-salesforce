@@ -47,10 +47,16 @@ export async function executeQuery(client, args) {
         {
           type: "text", 
           text: `❌ Query failed: ${error.message}\n\n` +
-                `Tip: Ensure your query uses proper SOQL syntax:\n` +
-                `- Use SELECT field1, field2 FROM ObjectName\n` +
-                `- Use single quotes for string literals\n` +
-                `- Check field names and object names are correct`
+                `Query: ${args.query || 'N/A'}\n\n` +
+                `Common issues:\n` +
+                `- Check field names (case-sensitive)\n` +
+                `- Verify object name exists\n` +
+                `- Ensure you have read permissions\n` +
+                `- Use single quotes for string literals\n\n` +
+                `SOQL Syntax Help:\n` +
+                `- SELECT Id, Name FROM Account LIMIT 10\n` +
+                `- SELECT Id, Name FROM Contact WHERE Email != null\n` +
+                `- SELECT Id, Name FROM Opportunity WHERE Amount > 1000`
         }
       ],
       isError: true

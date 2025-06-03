@@ -29,11 +29,11 @@
   "license": "MIT",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^0.4.0",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
     "jsforce": "^1.11.1",
     "keychain": "^1.5.0",
-    "express": "^4.18.2",
-    "open": "^10.0.0",
-    "dotenv": "^16.3.1"
+    "open": "^8.4.2"
   },
   "devDependencies": {
     "eslint": "^8.55.0",
@@ -42,7 +42,9 @@
   "engines": {
     "node": ">=18.0.0"
   },
-  "os": ["darwin"],
+  "os": [
+    "darwin"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/saf/mcp-salesforce.git"

@@ -88,11 +88,11 @@ export class SalesforceClient {
     await this.ensureValidConnection();
 
     try {
-      console.log(`🔍 Executing SOQL: ${soql.substring(0, 100)}${soql.length > 100 ? '...' : ''}`);
+      console.error(`🔍 Executing SOQL: ${soql.substring(0, 100)}${soql.length > 100 ? '...' : ''}`);
       
       const result = await this.connection.query(soql, options);
       
-      console.log(`✅ Query successful: ${result.totalSize} records found`);
+      console.error(`✅ Query successful: ${result.totalSize} records found`);
       return {
         totalSize: result.totalSize,
         done: result.done,
@@ -100,8 +100,50 @@ export class SalesforceClient {
         nextRecordsUrl: result.nextRecordsUrl
       };
     } catch (error) {
-      console.error('❌ SOQL query failed:', error.message);
-      throw new Error(`SOQL query failed: ${this.formatSalesforceError(error)}`);
+      console.error('❌ SOQL Query Error Details:', {
+        message: error.message,
+        name: error.name,
+        errorCode: error.errorCode,
+        fields: error.fields,
+        stack: error.stack?.substring(0, 200)
+      });
+
+      // Handle specific Salesforce errors
+      if (error.name === 'INVALID_QUERY' || error.errorCode === 'INVALID_QUERY') {
+        throw new Error(`Invalid SOQL query: ${error.message}`);
+      }
+      
+      if (error.name === 'INVALID_FIELD' || error.errorCode === 'INVALID_FIELD') {
+        throw new Error(`Invalid field in query: ${error.message}`);
+      }
+
+      if (error.name === 'INVALID_TYPE' || error.errorCode === 'INVALID_TYPE') {
+        throw new Error(`Invalid object type: ${error.message}`);
+      }
+
+      // Handle authentication errors
+      if (error.message.includes('Session expired') || error.message.includes('INVALID_SESSION_ID')) {
+        console.error('🔄 Session expired, attempting to refresh...');
+        await this.tokenManager.refreshTokens();
+        await this.createConnection();
+        // Retry once after token refresh
+        try {
+          const retryResult = await this.connection.query(soql, options);
+          console.error(`✅ Query successful after retry: ${retryResult.totalSize} records found`);
+          return {
+            totalSize: retryResult.totalSize,
+            done: retryResult.done,
+            records: retryResult.records,
+            nextRecordsUrl: retryResult.nextRecordsUrl
+          };
+        } catch (retryError) {
+          throw new Error(`Query failed after token refresh: ${retryError.message}`);
+        }
+      }
+
+      // Generic error handling with better message
+      const errorMessage = error.message || 'Unknown Salesforce error';
+      throw new Error(`Salesforce query error: ${this.formatSalesforceError(error)}`);
     }
   }
 

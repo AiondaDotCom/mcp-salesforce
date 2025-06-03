@@ -149,7 +149,6 @@ export class OAuthFlow {
             resolve(tokens);
           }
         } catch (error) {
-          console.error('Callback error:', error);
           res.status(500).send(`<h1>Error</h1><p>${error.message}</p>`);
           if (!resolved) {
             resolved = true;
@@ -172,7 +171,6 @@ export class OAuthFlow {
       // Handle server errors
       this.server.on('error', (error) => {
         if (error.code === 'EADDRINUSE' && !resolved) {
-          console.log(`Port ${this.callbackPort} is busy, trying random port...`);
           this.callbackPort = this.getRandomPort();
           // Create new server instance for the new port
           this.server = createServer(app);
@@ -194,7 +192,6 @@ export class OAuthFlow {
       // Clean up server
       if (this.server) {
         this.server.close();
-        console.log('🔒 Callback server stopped');
       }
     });
   }
@@ -213,17 +210,12 @@ export class OAuthFlow {
         return;
       }
 
-      console.log(`🔗 Callback server started on port ${port}`);
       
       // Open browser for authentication
       const authUrl = this.getAuthorizationUrl();
-      console.log(`🌐 Opening browser for authentication...`);
-      console.log(`📋 If browser doesn't open, visit: ${authUrl}`);
-      console.log(`⚠️  Make sure your Salesforce Connected App callback URL includes: http://localhost:${port}/callback`);
       
       open(authUrl).catch(error => {
-        console.warn(`Failed to open browser automatically: ${error.message}`);
-        console.log(`Please manually visit: ${authUrl}`);
+        // Browser failed to open - user will need to visit URL manually
       });
     });
   }

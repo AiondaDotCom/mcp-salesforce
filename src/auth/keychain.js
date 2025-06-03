@@ -27,8 +27,6 @@ export class KeychainManager {
           else resolve();
         });
       });
-
-      console.log('✅ Tokens stored securely in macOS Keychain');
     } catch (error) {
       throw new Error(`Failed to store tokens in Keychain: ${error.message}`);
     }

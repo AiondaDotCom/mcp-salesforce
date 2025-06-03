@@ -18,20 +18,16 @@ export class TokenManager {
     try {
       this.currentTokens = await this.keychain.getTokens();
       if (this.currentTokens) {
-        console.log('✅ Loaded existing tokens from Keychain');
         
         // Check if tokens need refresh
         if (await this.needsRefresh()) {
-          console.log('🔄 Tokens need refresh, attempting automatic refresh...');
           await this.refreshTokens();
         }
         return true;
       } else {
-        console.log('⚠️  No existing tokens found - run setup first');
         return false;
       }
     } catch (error) {
-      console.error('❌ Failed to initialize tokens:', error.message);
       return false;
     }
   }
@@ -106,9 +102,7 @@ export class TokenManager {
       // Store updated tokens in Keychain
       await this.keychain.storeTokens(this.currentTokens);
       
-      console.log('✅ Access token refreshed successfully');
     } catch (error) {
-      console.error('❌ Token refresh failed:', error.message);
       
       // If refresh fails, clear tokens and require re-authentication
       await this.clearTokens();
@@ -122,7 +116,6 @@ export class TokenManager {
   async authenticateWithOAuth() {
     try {
       const oauth = new OAuthFlow(this.clientId, this.clientSecret, this.instanceUrl);
-      console.log('🔐 Starting OAuth authentication flow...');
       
       const tokens = await oauth.startFlow();
       
@@ -130,10 +123,8 @@ export class TokenManager {
       await this.keychain.storeTokens(tokens);
       this.currentTokens = tokens;
       
-      console.log('✅ Authentication completed successfully!');
       return tokens;
     } catch (error) {
-      console.error('❌ OAuth authentication failed:', error.message);
       throw error;
     }
   }
@@ -144,7 +135,6 @@ export class TokenManager {
   async clearTokens() {
     await this.keychain.clearTokens();
     this.currentTokens = null;
-    console.log('🗑️  All tokens cleared');
   }
 
   /**

@@ -30,10 +30,8 @@ export class SalesforceClient {
       await this.createConnection();
       
       this.initialized = true;
-      console.log('✅ Salesforce client initialized successfully');
       return true;
     } catch (error) {
-      console.error('❌ Failed to initialize Salesforce client:', error.message);
       throw error;
     }
   }
@@ -54,7 +52,6 @@ export class SalesforceClient {
 
       // Test connection
       await this.connection.identity();
-      console.log('✅ jsforce connection established');
     } catch (error) {
       throw new Error(`Failed to create Salesforce connection: ${error.message}`);
     }
@@ -71,12 +68,10 @@ export class SalesforceClient {
     try {
       // Check if token needs refresh
       if (await this.tokenManager.needsRefresh()) {
-        console.log('🔄 Refreshing connection tokens...');
         await this.tokenManager.refreshTokens();
         await this.createConnection();
       }
     } catch (error) {
-      console.error('❌ Connection validation failed:', error.message);
       throw error;
     }
   }
@@ -88,11 +83,8 @@ export class SalesforceClient {
     await this.ensureValidConnection();
 
     try {
-      console.error(`🔍 Executing SOQL: ${soql.substring(0, 100)}${soql.length > 100 ? '...' : ''}`);
-      
       const result = await this.connection.query(soql, options);
       
-      console.error(`✅ Query successful: ${result.totalSize} records found`);
       return {
         totalSize: result.totalSize,
         done: result.done,
@@ -100,14 +92,6 @@ export class SalesforceClient {
         nextRecordsUrl: result.nextRecordsUrl
       };
     } catch (error) {
-      console.error('❌ SOQL Query Error Details:', {
-        message: error.message,
-        name: error.name,
-        errorCode: error.errorCode,
-        fields: error.fields,
-        stack: error.stack?.substring(0, 200)
-      });
-
       // Handle specific Salesforce errors
       if (error.name === 'INVALID_QUERY' || error.errorCode === 'INVALID_QUERY') {
         throw new Error(`Invalid SOQL query: ${error.message}`);
@@ -123,13 +107,11 @@ export class SalesforceClient {
 
       // Handle authentication errors
       if (error.message.includes('Session expired') || error.message.includes('INVALID_SESSION_ID')) {
-        console.error('🔄 Session expired, attempting to refresh...');
         await this.tokenManager.refreshTokens();
         await this.createConnection();
         // Retry once after token refresh
         try {
           const retryResult = await this.connection.query(soql, options);
-          console.error(`✅ Query successful after retry: ${retryResult.totalSize} records found`);
           return {
             totalSize: retryResult.totalSize,
             done: retryResult.done,
@@ -154,12 +136,9 @@ export class SalesforceClient {
     await this.ensureValidConnection();
 
     try {
-      console.log(`➕ Creating ${sobject} record`);
-      
       const result = await this.connection.sobject(sobject).create(data);
       
       if (result.success) {
-        console.log(`✅ Created ${sobject} record: ${result.id}`);
         return {
           id: result.id,
           success: true,
@@ -170,7 +149,6 @@ export class SalesforceClient {
         throw new Error(`Create failed: ${JSON.stringify(result.errors)}`);
       }
     } catch (error) {
-      console.error(`❌ Failed to create ${sobject} record:`, error.message);
       throw new Error(`Create ${sobject} failed: ${this.formatSalesforceError(error)}`);
     }
   }
@@ -182,15 +160,12 @@ export class SalesforceClient {
     await this.ensureValidConnection();
 
     try {
-      console.log(`✏️  Updating ${sobject} record: ${id}`);
-      
       const result = await this.connection.sobject(sobject).update({
         Id: id,
         ...data
       });
       
       if (result.success) {
-        console.log(`✅ Updated ${sobject} record: ${id}`);
         return {
           id: result.id,
           success: true,
@@ -201,7 +176,6 @@ export class SalesforceClient {
         throw new Error(`Update failed: ${JSON.stringify(result.errors)}`);
       }
     } catch (error) {
-      console.error(`❌ Failed to update ${sobject} record:`, error.message);
       throw new Error(`Update ${sobject} failed: ${this.formatSalesforceError(error)}`);
     }
   }
@@ -213,12 +187,9 @@ export class SalesforceClient {
     await this.ensureValidConnection();
 
     try {
-      console.log(`🗑️  Deleting ${sobject} record: ${id}`);
-      
       const result = await this.connection.sobject(sobject).destroy(id);
       
       if (result.success) {
-        console.log(`✅ Deleted ${sobject} record: ${id}`);
         return {
           id: result.id,
           success: true,
@@ -228,7 +199,6 @@ export class SalesforceClient {
         throw new Error(`Delete failed: ${JSON.stringify(result.errors)}`);
       }
     } catch (error) {
-      console.error(`❌ Failed to delete ${sobject} record:`, error.message);
       throw new Error(`Delete ${sobject} failed: ${this.formatSalesforceError(error)}`);
     }
   }
@@ -240,11 +210,8 @@ export class SalesforceClient {
     await this.ensureValidConnection();
 
     try {
-      console.log(`📋 Describing ${sobject} schema`);
-      
       const result = await this.connection.sobject(sobject).describe();
       
-      console.log(`✅ Retrieved ${sobject} schema: ${result.fields.length} fields`);
       return {
         name: result.name,
         label: result.label,
@@ -269,7 +236,6 @@ export class SalesforceClient {
         recordTypeInfos: result.recordTypeInfos || []
       };
     } catch (error) {
-      console.error(`❌ Failed to describe ${sobject}:`, error.message);
       throw new Error(`Describe ${sobject} failed: ${this.formatSalesforceError(error)}`);
     }
   }
@@ -281,8 +247,6 @@ export class SalesforceClient {
     await this.ensureValidConnection();
 
     try {
-      console.log('🌐 Retrieving global SObject list');
-      
       const result = await this.connection.describeGlobal();
       
       const sobjects = result.sobjects
@@ -300,10 +264,8 @@ export class SalesforceClient {
         }))
         .sort((a, b) => a.label.localeCompare(b.label));
 
-      console.log(`✅ Retrieved ${sobjects.length} queryable SObjects`);
       return sobjects;
     } catch (error) {
-      console.error('❌ Failed to describe global:', error.message);
       throw new Error(`Global describe failed: ${this.formatSalesforceError(error)}`);
     }
   }

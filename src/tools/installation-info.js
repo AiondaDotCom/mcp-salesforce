@@ -10,7 +10,7 @@ import { logger } from '../utils/debug.js';
 
 export const salesforceInstallationInfoTool = {
   name: "salesforce_installation_info",
-  description: "Returns information about the learned Salesforce installation, showing available objects, custom fields, and customizations.",
+  description: "Returns comprehensive information about the learned Salesforce installation, including all object details, field specifications, relationships, permissions, and customizations from the learned installation data.",
   inputSchema: {
     type: "object",
     properties: {
@@ -30,14 +30,37 @@ export const salesforceInstallationInfoTool = {
       include_relationships: {
         type: "boolean",
         description: "Include relationship information between objects",
-        default: false
+        default: true
+      },
+      detailed_fields: {
+        type: "boolean",
+        description: "Show detailed field information including data types, constraints, and metadata",
+        default: true
+      },
+      include_permissions: {
+        type: "boolean",
+        description: "Include detailed permission information for objects and fields",
+        default: true
+      },
+      max_fields_per_object: {
+        type: "number",
+        description: "Maximum number of fields to show per object (default: all fields)",
+        default: 0
       }
     }
   }
 };
 
 export async function handleSalesforceInstallationInfo(args) {
-  const { object_name, field_search, show_custom_only = false, include_relationships = false } = args;
+  const { 
+    object_name, 
+    field_search, 
+    show_custom_only = false, 
+    include_relationships = true,
+    detailed_fields = true,
+    include_permissions = true,
+    max_fields_per_object = 0
+  } = args;
   
   try {
     // Check if installation has been learned
@@ -63,16 +86,30 @@ export async function handleSalesforceInstallationInfo(args) {
     
     // Handle specific object request
     if (object_name) {
-      return handleSpecificObjectInfo(object_name, documentation, include_relationships);
+      return handleSpecificObjectInfo(object_name, documentation, {
+        include_relationships,
+        detailed_fields,
+        include_permissions,
+        max_fields_per_object
+      });
     }
     
     // Handle field search
     if (field_search) {
-      return handleFieldSearch(field_search, documentation, show_custom_only);
+      return handleFieldSearch(field_search, documentation, {
+        show_custom_only,
+        detailed_fields,
+        max_fields_per_object
+      });
     }
     
     // General installation overview
-    return handleGeneralOverview(documentation, show_custom_only, include_relationships);
+    return handleGeneralOverview(documentation, {
+      show_custom_only,
+      include_relationships,
+      detailed_fields,
+      include_permissions
+    });
     
   } catch (error) {
     logger.error('❌ Error retrieving installation info:', error);
@@ -85,7 +122,9 @@ export async function handleSalesforceInstallationInfo(args) {
   }
 }
 
-function handleSpecificObjectInfo(objectName, documentation, includeRelationships) {
+function handleSpecificObjectInfo(objectName, documentation, options) {
+  const { include_relationships, detailed_fields, include_permissions, max_fields_per_object } = options;
+  
   const obj = documentation.objects[objectName];
   if (!obj) {
     // Try to find similar object names
@@ -121,62 +160,120 @@ function handleSpecificObjectInfo(objectName, documentation, includeRelationship
   
   let result = `📋 **${obj.basic_info.label} (${obj.basic_info.name})**\n\n`;
   
-  // Basic info
-  result += `**Basic Information:**\n`;
-  result += `- **API Name:** ${obj.basic_info.name}\n`;
+  // Basic info with all available details
+  result += `## 📝 Basic Information\n`;
+  result += `- **API Name:** \`${obj.basic_info.name}\`\n`;
   result += `- **Label:** ${obj.basic_info.label}\n`;
   result += `- **Plural Label:** ${obj.basic_info.label_plural}\n`;
-  result += `- **Custom Object:** ${obj.basic_info.custom ? '✅ Yes' : '❌ No'}\n\n`;
+  result += `- **Custom Object:** ${obj.basic_info.custom ? '✅ Yes' : '❌ No'}\n`;
   
-  // Permissions
-  result += `**Permissions:**\n`;
-  result += `- **Create:** ${obj.metadata.createable ? '✅' : '❌'}\n`;
-  result += `- **Update:** ${obj.metadata.updateable ? '✅' : '❌'}\n`;
-  result += `- **Delete:** ${obj.metadata.deletable ? '✅' : '❌'}\n`;
-  result += `- **Query:** ${obj.metadata.queryable ? '✅' : '❌'}\n\n`;
-  
-  // Fields summary
-  result += `**Fields Overview:**\n`;
-  result += `- **${obj.field_count}** total fields\n`;
-  result += `- **${obj.custom_field_count}** custom fields\n\n`;
-  
-  // Important fields
-  const importantFields = Object.entries(obj.fields).filter(([name, field]) => 
-    field.custom || field.required || ['Name', 'Email', 'Phone', 'Website'].includes(name)
-  );
-  
-  if (importantFields.length > 0) {
-    result += `**Important Fields:**\n`;
-    for (const [name, field] of importantFields.slice(0, 15)) {
-      const required = field.required ? ' ⚠️' : '';
-      const custom = field.custom ? ' 🔧' : '';
-      result += `- **${field.label}** (\`${name}\`) - ${field.type}${required}${custom}\n`;
+  // Extended metadata if available
+  if (obj.metadata) {
+    result += `\n## 🔐 Permissions & Capabilities\n`;
+    result += `- **Createable:** ${obj.metadata.createable ? '✅' : '❌'}\n`;
+    result += `- **Updateable:** ${obj.metadata.updateable ? '✅' : '❌'}\n`;
+    result += `- **Deletable:** ${obj.metadata.deletable ? '✅' : '❌'}\n`;
+    result += `- **Queryable:** ${obj.metadata.queryable ? '✅' : '❌'}\n`;
+    if (obj.metadata.searchable !== undefined) {
+      result += `- **Searchable:** ${obj.metadata.searchable ? '✅' : '❌'}\n`;
     }
-    if (importantFields.length > 15) {
-      result += `- ... and ${importantFields.length - 15} more fields\n`;
+    if (obj.metadata.retrieveable !== undefined) {
+      result += `- **Retrieveable:** ${obj.metadata.retrieveable ? '✅' : '❌'}\n`;
     }
-    result += '\n';
   }
   
-  // Relationships
-  if (includeRelationships && (obj.relationships.parent_relationships.length > 0 || obj.relationships.child_relationships.length > 0)) {
-    result += `**Relationships:**\n`;
+  // Fields overview with detailed statistics
+  result += `\n## 📊 Fields Overview\n`;
+  result += `- **Total Fields:** ${obj.field_count}\n`;
+  result += `- **Custom Fields:** ${obj.custom_field_count}\n`;
+  result += `- **Standard Fields:** ${obj.field_count - obj.custom_field_count}\n`;
+  
+  // Detailed field information
+  if (detailed_fields && obj.fields) {
+    result += `\n## 📋 Detailed Field Information\n`;
     
-    if (obj.relationships.parent_relationships.length > 0) {
-      result += `*Parent objects:*\n`;
-      for (const rel of obj.relationships.parent_relationships) {
-        result += `- ${rel.field} → ${rel.references.join(', ')}\n`;
+    const fieldEntries = Object.entries(obj.fields);
+    const fieldsToShow = max_fields_per_object > 0 ? fieldEntries.slice(0, max_fields_per_object) : fieldEntries;
+    
+    // Group fields by type for better organization
+    const fieldsByType = {};
+    for (const [fieldName, field] of fieldsToShow) {
+      const type = field.type || 'unknown';
+      if (!fieldsByType[type]) {
+        fieldsByType[type] = [];
+      }
+      fieldsByType[type].push([fieldName, field]);
+    }
+    
+    for (const [fieldType, fields] of Object.entries(fieldsByType)) {
+      result += `\n### ${fieldType.toUpperCase()} Fields (${fields.length})\n`;
+      
+      for (const [fieldName, field] of fields) {
+        result += `\n**${field.label || fieldName}** (\`${fieldName}\`)\n`;
+        result += `- **Type:** ${field.type}\n`;
+        result += `- **Required:** ${field.required ? '✅ Yes' : '❌ No'}\n`;
+        result += `- **Custom:** ${field.custom ? '✅ Yes' : '❌ No'}\n`;
+        result += `- **Updateable:** ${field.updateable ? '✅' : '❌'}\n`;
+        result += `- **Createable:** ${field.createable ? '✅' : '❌'}\n`;
+        
+        // Type-specific information
+        if (field.max_length) {
+          result += `- **Max Length:** ${field.max_length}\n`;
+        }
+        if (field.precision !== undefined) {
+          result += `- **Precision:** ${field.precision}\n`;
+        }
+        if (field.scale !== undefined) {
+          result += `- **Scale:** ${field.scale}\n`;
+        }
+        if (field.picklist_values && field.picklist_values.length > 0) {
+          result += `- **Picklist Values:** ${field.picklist_values.slice(0, 5).map(v => `"${v}"`).join(', ')}`;
+          if (field.picklist_values.length > 5) {
+            result += ` (and ${field.picklist_values.length - 5} more)`;
+          }
+          result += `\n`;
+        }
+        if (field.references && field.references.length > 0) {
+          result += `- **References:** ${field.references.join(', ')}\n`;
+        }
+        if (field.default_value !== undefined && field.default_value !== null) {
+          result += `- **Default Value:** ${field.default_value}\n`;
+        }
+        if (field.help_text) {
+          result += `- **Help Text:** ${field.help_text}\n`;
+        }
       }
     }
     
-    if (obj.relationships.child_relationships.length > 0) {
-      result += `*Child objects:*\n`;
-      for (const rel of obj.relationships.child_relationships.slice(0, 10)) {
-        result += `- ${rel.child_object} (${rel.relationship_name})\n`;
+    if (max_fields_per_object > 0 && fieldEntries.length > max_fields_per_object) {
+      result += `\n*... and ${fieldEntries.length - max_fields_per_object} more fields*\n`;
+    }
+  }
+  
+  // Relationships with complete details
+  if (include_relationships && obj.relationships) {
+    result += `\n## 🔗 Relationships\n`;
+    
+    if (obj.relationships.parent_relationships && obj.relationships.parent_relationships.length > 0) {
+      result += `\n### Parent Relationships (${obj.relationships.parent_relationships.length})\n`;
+      for (const rel of obj.relationships.parent_relationships) {
+        result += `- **${rel.field}** → References: ${rel.references.join(', ')}\n`;
       }
-      if (obj.relationships.child_relationships.length > 10) {
-        result += `- ... and ${obj.relationships.child_relationships.length - 10} more\n`;
+    }
+    
+    if (obj.relationships.child_relationships && obj.relationships.child_relationships.length > 0) {
+      result += `\n### Child Relationships (${obj.relationships.child_relationships.length})\n`;
+      for (const rel of obj.relationships.child_relationships) {
+        result += `- **${rel.child_object}** (Relationship: ${rel.relationship_name})\n`;
+        if (rel.field) {
+          result += `  - Field: ${rel.field}\n`;
+        }
       }
+    }
+    
+    if ((!obj.relationships.parent_relationships || obj.relationships.parent_relationships.length === 0) &&
+        (!obj.relationships.child_relationships || obj.relationships.child_relationships.length === 0)) {
+      result += `\n*No relationships found for this object.*\n`;
     }
   }
   
@@ -188,14 +285,15 @@ function handleSpecificObjectInfo(objectName, documentation, includeRelationship
   };
 }
 
-function handleFieldSearch(searchTerm, documentation, showCustomOnly) {
+function handleFieldSearch(searchTerm, documentation, options) {
+  const { show_custom_only, detailed_fields, max_fields_per_object } = options;
   const searchResults = [];
   
   for (const [objectName, obj] of Object.entries(documentation.objects)) {
     if (obj.error) continue;
     
     for (const [fieldName, field] of Object.entries(obj.fields || {})) {
-      if (showCustomOnly && !field.custom) continue;
+      if (show_custom_only && !field.custom) continue;
       
       const matchesName = fieldName.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesLabel = field.label?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -205,10 +303,7 @@ function handleFieldSearch(searchTerm, documentation, showCustomOnly) {
           object: objectName,
           objectLabel: obj.basic_info.label,
           field: fieldName,
-          fieldLabel: field.label,
-          type: field.type,
-          custom: field.custom,
-          required: field.required
+          fieldData: field
         });
       }
     }
@@ -219,7 +314,7 @@ function handleFieldSearch(searchTerm, documentation, showCustomOnly) {
       content: [{
         type: "text",
         text: `🔍 **No fields found for: "${searchTerm}"**\n\n` +
-              `${showCustomOnly ? 'When searching for custom fields, ' : ''}no matching fields were found.\n\n` +
+              `${show_custom_only ? 'When searching for custom fields, ' : ''}no matching fields were found.\n\n` +
               `💡 **Tips:**\n` +
               `- Try part of the field name\n` +
               `- Search by label instead of API name\n` +
@@ -240,16 +335,52 @@ function handleFieldSearch(searchTerm, documentation, showCustomOnly) {
   
   for (const [objectName, fields] of Object.entries(groupedResults)) {
     const objectLabel = fields[0].objectLabel;
-    result += `**${objectLabel} (${objectName}):**\n`;
+    result += `## ${objectLabel} (${objectName})\n`;
     
-    for (const field of fields.slice(0, 5)) {
-      const custom = field.custom ? ' 🔧' : '';
-      const required = field.required ? ' ⚠️' : '';
-      result += `- **${field.fieldLabel}** (\`${field.field}\`) - ${field.type}${required}${custom}\n`;
+    const fieldsToShow = max_fields_per_object > 0 ? fields.slice(0, max_fields_per_object) : fields;
+    
+    for (const item of fieldsToShow) {
+      const field = item.fieldData;
+      result += `\n### ${field.label || item.field} (\`${item.field}\`)\n`;
+      
+      if (detailed_fields) {
+        result += `- **Type:** ${field.type}\n`;
+        result += `- **Required:** ${field.required ? '✅ Yes' : '❌ No'}\n`;
+        result += `- **Custom:** ${field.custom ? '✅ Yes' : '❌ No'}\n`;
+        result += `- **Updateable:** ${field.updateable ? '✅' : '❌'}\n`;
+        result += `- **Createable:** ${field.createable ? '✅' : '❌'}\n`;
+        
+        if (field.max_length) {
+          result += `- **Max Length:** ${field.max_length}\n`;
+        }
+        if (field.precision !== undefined) {
+          result += `- **Precision:** ${field.precision}\n`;
+        }
+        if (field.scale !== undefined) {
+          result += `- **Scale:** ${field.scale}\n`;
+        }
+        if (field.picklist_values && field.picklist_values.length > 0) {
+          result += `- **Picklist Values:** ${field.picklist_values.slice(0, 3).map(v => `"${v}"`).join(', ')}`;
+          if (field.picklist_values.length > 3) {
+            result += ` (and ${field.picklist_values.length - 3} more)`;
+          }
+          result += `\n`;
+        }
+        if (field.references && field.references.length > 0) {
+          result += `- **References:** ${field.references.join(', ')}\n`;
+        }
+        if (field.help_text) {
+          result += `- **Help Text:** ${field.help_text}\n`;
+        }
+      } else {
+        const custom = field.custom ? ' 🔧' : '';
+        const required = field.required ? ' ⚠️' : '';
+        result += `- **Type:** ${field.type}${required}${custom}\n`;
+      }
     }
     
-    if (fields.length > 5) {
-      result += `- ... and ${fields.length - 5} more fields\n`;
+    if (max_fields_per_object > 0 && fields.length > max_fields_per_object) {
+      result += `\n*... and ${fields.length - max_fields_per_object} more fields in this object*\n`;
     }
     result += '\n';
   }
@@ -262,62 +393,145 @@ function handleFieldSearch(searchTerm, documentation, showCustomOnly) {
   };
 }
 
-function handleGeneralOverview(documentation, showCustomOnly, includeRelationships) {
-  let result = `📊 **Salesforce Installation Overview**\n\n`;
+function handleGeneralOverview(documentation, options) {
+  const { show_custom_only, include_relationships, detailed_fields, include_permissions } = options;
   
-  // Metadata info
-  result += `**Last Update:** ${new Date(documentation.metadata.learned_at).toLocaleString()}\n`;
-  result += `**Salesforce Instance:** ${documentation.metadata.salesforce_instance}\n`;
-  result += `**API Version:** ${documentation.metadata.api_version}\n\n`;
+  let result = `📊 **Salesforce Installation - Complete Overview**\n\n`;
   
-  // Summary
-  result += `**Summary:**\n`;
-  result += `- **${documentation.summary.total_objects}** total objects\n`;
-  result += `- **${documentation.summary.standard_objects}** standard objects\n`;
-  result += `- **${documentation.summary.custom_objects}** custom objects\n`;
-  result += `- **${documentation.summary.total_fields}** total fields\n`;
-  result += `- **${documentation.summary.custom_fields}** custom fields\n\n`;
+  // Enhanced metadata info
+  result += `## 📋 Installation Metadata\n`;
+  result += `- **Last Learned:** ${new Date(documentation.metadata.learned_at).toLocaleString()}\n`;
+  if (documentation.metadata.salesforce_instance) {
+    result += `- **Salesforce Instance:** ${documentation.metadata.salesforce_instance}\n`;
+  }
+  result += `- **API Version:** ${documentation.metadata.api_version}\n`;
+  if (documentation.metadata.learning_options) {
+    result += `- **Learning Options:**\n`;
+    result += `  - Include Unused: ${documentation.metadata.learning_options.include_unused}\n`;
+    result += `  - Detailed Relationships: ${documentation.metadata.learning_options.detailed_relationships}\n`;
+  }
   
-  // Object list
+  // Enhanced summary with more statistics
+  result += `\n## 📊 Installation Statistics\n`;
+  result += `- **Total Objects:** ${documentation.summary.total_objects}\n`;
+  result += `- **Standard Objects:** ${documentation.summary.standard_objects}\n`;
+  result += `- **Custom Objects:** ${documentation.summary.custom_objects}\n`;
+  result += `- **Total Fields:** ${documentation.summary.total_fields}\n`;
+  result += `- **Custom Fields:** ${documentation.summary.custom_fields}\n`;
+  
+  // Calculate additional statistics
+  const objectsWithErrors = Object.values(documentation.objects).filter(obj => obj.error).length;
+  if (objectsWithErrors > 0) {
+    result += `- **Objects with Errors:** ${objectsWithErrors}\n`;
+  }
+  
+  // Field type statistics
+  const fieldTypes = {};
+  let totalRelationships = 0;
+  
+  for (const [objectName, obj] of Object.entries(documentation.objects)) {
+    if (obj.error) continue;
+    
+    if (obj.relationships) {
+      totalRelationships += (obj.relationships.parent_relationships?.length || 0) + 
+                           (obj.relationships.child_relationships?.length || 0);
+    }
+    
+    for (const [fieldName, field] of Object.entries(obj.fields || {})) {
+      const type = field.type || 'unknown';
+      fieldTypes[type] = (fieldTypes[type] || 0) + 1;
+    }
+  }
+  
+  if (include_relationships) {
+    result += `- **Total Relationships:** ${totalRelationships}\n`;
+  }
+  
+  // Field type breakdown
+  if (detailed_fields && Object.keys(fieldTypes).length > 0) {
+    result += `\n### Field Type Distribution\n`;
+    const sortedTypes = Object.entries(fieldTypes).sort(([,a], [,b]) => b - a);
+    for (const [type, count] of sortedTypes.slice(0, 10)) {
+      result += `- **${type}:** ${count} fields\n`;
+    }
+    if (sortedTypes.length > 10) {
+      result += `- *... and ${sortedTypes.length - 10} more field types*\n`;
+    }
+  }
+  
+  // Complete object list with detailed information
   const objects = Object.entries(documentation.objects)
-    .filter(([name, obj]) => !obj.error && (!showCustomOnly || obj.basic_info.custom))
+    .filter(([name, obj]) => !obj.error && (!show_custom_only || obj.basic_info.custom))
     .sort(([a], [b]) => a.localeCompare(b));
   
   if (objects.length > 0) {
-    result += `**${showCustomOnly ? 'Custom Objects' : 'Available Objects'}:**\n`;
+    result += `\n## 📦 ${show_custom_only ? 'Custom Objects' : 'All Objects'} (${objects.length})\n`;
     
-    for (const [objectName, obj] of objects.slice(0, 20)) {
+    for (const [objectName, obj] of objects) {
       const custom = obj.basic_info.custom ? ' 🔧' : '';
-      result += `- **${obj.basic_info.label}** (\`${objectName}\`) - ${obj.field_count} Fields${custom}\n`;
+      const hasRelationships = obj.relationships && 
+        ((obj.relationships.parent_relationships?.length || 0) + (obj.relationships.child_relationships?.length || 0)) > 0;
+      const relationshipIndicator = include_relationships && hasRelationships ? ' 🔗' : '';
+      
+      result += `\n### ${obj.basic_info.label} (\`${objectName}\`)${custom}${relationshipIndicator}\n`;
+      result += `- **Fields:** ${obj.field_count} total, ${obj.custom_field_count} custom\n`;
+      
+      if (include_permissions && obj.metadata) {
+        const permissions = [];
+        if (obj.metadata.createable) permissions.push('Create');
+        if (obj.metadata.updateable) permissions.push('Update');
+        if (obj.metadata.deletable) permissions.push('Delete');
+        if (obj.metadata.queryable) permissions.push('Query');
+        result += `- **Permissions:** ${permissions.join(', ')}\n`;
+      }
+      
+      if (include_relationships && obj.relationships) {
+        const parentCount = obj.relationships.parent_relationships?.length || 0;
+        const childCount = obj.relationships.child_relationships?.length || 0;
+        if (parentCount > 0 || childCount > 0) {
+          result += `- **Relationships:** ${parentCount} parent, ${childCount} child\n`;
+        }
+      }
+      
+      // Show some important fields
+      if (detailed_fields && obj.fields) {
+        const importantFields = Object.entries(obj.fields)
+          .filter(([name, field]) => field.required || field.custom || ['Name', 'Email'].includes(name))
+          .slice(0, 3);
+        
+        if (importantFields.length > 0) {
+          result += `- **Key Fields:** ${importantFields.map(([name, field]) => {
+            const indicators = [];
+            if (field.required) indicators.push('⚠️');
+            if (field.custom) indicators.push('🔧');
+            return `${field.label || name}${indicators.join('')}`;
+          }).join(', ')}\n`;
+        }
+      }
     }
-    
-    if (objects.length > 20) {
-      result += `- ... and ${objects.length - 20} more objects\n`;
-    }
-    result += '\n';
   }
   
-  // Custom objects highlight
-  if (!showCustomOnly && documentation.summary.custom_objects > 0) {
-    const customObjects = Object.entries(documentation.objects)
-      .filter(([name, obj]) => !obj.error && obj.basic_info.custom)
-      .slice(0, 10);
-    
-    result += `**🔧 Custom Objects (Selection):**\n`;
-    for (const [objectName, obj] of customObjects) {
-      result += `- **${obj.basic_info.label}** (\`${objectName}\`) - ${obj.custom_field_count} Custom Fields\n`;
+  // Objects with errors
+  const errorObjects = Object.entries(documentation.objects)
+    .filter(([name, obj]) => obj.error);
+  
+  if (errorObjects.length > 0) {
+    result += `\n## ⚠️ Objects with Analysis Errors (${errorObjects.length})\n`;
+    for (const [objectName, obj] of errorObjects.slice(0, 10)) {
+      result += `- **${objectName}:** ${obj.error}\n`;
     }
-    if (documentation.summary.custom_objects > 10) {
-      result += `- ... and ${documentation.summary.custom_objects - 10} more Custom Objects\n`;
+    if (errorObjects.length > 10) {
+      result += `- *... and ${errorObjects.length - 10} more objects with errors*\n`;
     }
-    result += '\n';
   }
   
-  result += `💡 **Additional Options:**\n`;
-  result += `- Use \`object_name\` for details about a specific object\n`;
-  result += `- Use \`field_search\` to search for specific fields\n`;
-  result += `- Use \`show_custom_only: true\` to show only customizations\n`;
-  result += `- Use \`include_relationships: true\` for relationship information`;
+  result += `\n## 💡 Usage Tips\n`;
+  result += `- **Specific Object:** Use \`object_name: "ObjectName"\` for complete object details\n`;
+  result += `- **Field Search:** Use \`field_search: "searchterm"\` to find specific fields\n`;
+  result += `- **Custom Only:** Use \`show_custom_only: true\` to focus on customizations\n`;
+  result += `- **Detailed Fields:** Use \`detailed_fields: true\` for complete field information\n`;
+  result += `- **Relationships:** Use \`include_relationships: true\` for relationship mapping\n`;
+  result += `- **Limit Results:** Use \`max_fields_per_object: N\` to limit field display\n`;
   
   return {
     content: [{

@@ -24,8 +24,8 @@ export const salesforceLearnContextTool = {
     properties: {
       action: {
         type: "string",
-        enum: ["start_interview", "answer_question", "show_context", "reset_context", "suggest_questions"],
-        description: "Action to perform: start_interview (begin learning), answer_question (provide answers), show_context (display stored context), reset_context (clear all), suggest_questions (get intelligent questions based on data model)"
+        enum: ["start_interview", "answer_question", "show_context", "reset_context", "suggest_questions", "quick_setup"],
+        description: "Action to perform: start_interview (begin learning), answer_question (provide answers), show_context (display stored context), reset_context (clear all), suggest_questions (get intelligent questions based on data model), quick_setup (explain everything in one go)"
       },
       question_id: {
         type: "string",
@@ -40,6 +40,31 @@ export const salesforceLearnContextTool = {
         enum: ["personal", "business", "data_model", "all"],
         description: "Type of context to focus on (for show_context and suggest_questions)",
         default: "all"
+      },
+      // Quick setup parameters
+      full_name: {
+        type: "string",
+        description: "Your full name (for quick_setup)"
+      },
+      email: {
+        type: "string",
+        description: "Your email address (for quick_setup)"
+      },
+      role: {
+        type: "string",
+        description: "Your professional role/position (for quick_setup)"
+      },
+      company_name: {
+        type: "string",
+        description: "Your company name (for quick_setup)"
+      },
+      industry: {
+        type: "string",
+        description: "Your company's industry (for quick_setup)"
+      },
+      business_process_description: {
+        type: "string",
+        description: "Complete description of your business processes, how you use Salesforce, what you do, etc. (for quick_setup)"
       }
     },
     required: ["action"]
@@ -47,7 +72,7 @@ export const salesforceLearnContextTool = {
 };
 
 export async function handleSalesforceLearnContext(args) {
-  const { action, question_id, answer, context_type = "all" } = args;
+  const { action, question_id, answer, context_type = "all", full_name, email, role, company_name, industry, business_process_description } = args;
   
   try {
     switch (action) {
@@ -61,16 +86,18 @@ export async function handleSalesforceLearnContext(args) {
         return await resetContext();
       case "suggest_questions":
         return await suggestIntelligentQuestions(context_type);
+      case "quick_setup":
+        return await quickSetupContext({ full_name, email, role, company_name, industry, business_process_description });
       default:
         return {
           content: [{
             type: "text",
-            text: `❌ **Invalid action:** ${action}\n\nSupported actions: start_interview, answer_question, show_context, reset_context, suggest_questions`
+            text: `❌ **Invalid action:** ${action}\n\nSupported actions: start_interview, answer_question, show_context, reset_context, suggest_questions, quick_setup`
           }]
         };
     }
   } catch (error) {
-    logger.error('❌ Error in context learning:', error);
+    debug.error('❌ Error in context learning:', error);
     return {
       content: [{
         type: "text",
@@ -194,21 +221,50 @@ async function startContextInterview() {
 async function answerContextQuestion(questionId, answer) {
   const context = await loadContext();
   
-  if (!context.interview || context.interview.status !== "in_progress") {
+  // Allow additional questions even after interview completion
+  // Check if this is a data_model question or other additional questions
+  const isDataModelQuestion = questionId.startsWith('data_model_') || questionId.includes('data_model');
+  const predefinedAdditionalQuestions = ['data_model_details', 'custom_objects_purpose', 'business_processes', 'integration_systems', 'reporting_needs'];
+  const isAdditionalQuestion = isDataModelQuestion || predefinedAdditionalQuestions.includes(questionId) || questionId.startsWith('additional_');
+  
+  if (!context.interview) {
     return {
       content: [{
         type: "text",
-        text: `⚠️ **No active interview**\n\nFirst start an interview with \`action: "start_interview"\``
+        text: `⚠️ **No interview found**\n\nFirst start an interview with \`action: "start_interview"\``
       }]
     };
   }
   
-  const questionIndex = context.interview.pending_questions.findIndex(q => q.id === questionId);
-  if (questionIndex === -1) {
+  // For basic interview questions, require in_progress status
+  if (!isAdditionalQuestion && context.interview.status !== "in_progress") {
     return {
       content: [{
         type: "text",
-        text: `❌ **Invalid question ID:** ${questionId}\n\nUse the ID from the current question.`
+        text: `⚠️ **Basic interview already completed**\n\n` +
+              `The basic interview is finished. You can:\n` +
+              `- Use \`suggest_questions\` for advanced questions\n` +
+              `- Add data model details with questions like \`data_model_details\`\n` +
+              `- Use \`reset_context\` to start a new interview`
+      }]
+    };
+  }
+  
+  // Handle additional questions after interview completion
+  if (isAdditionalQuestion && context.interview.status === "completed") {
+    return await handleAdditionalQuestion(questionId, answer, context);
+  }
+  
+  const questionIndex = context.interview.pending_questions.findIndex(q => q.id === questionId);
+  if (questionIndex === -1) {
+    // Check if this is a data_model question that should be handled differently
+    if (isDataModelQuestion) {
+      return await handleAdditionalQuestion(questionId, answer, context);
+    }
+    return {
+      content: [{
+        type: "text",
+        text: `❌ **Invalid question ID:** ${questionId}\n\nUse the ID from the current question or use \`suggest_questions\` to see available questions.`
       }]
     };
   }
@@ -393,6 +449,14 @@ async function showStoredContext(contextType) {
   }
   if (hasPersonalInfo && hasBusinessInfo) {
     result += `- **Intelligent questions:** \`action: "suggest_questions"\`\n`;
+  }
+  // Show additional questions even after interview completion
+  if (context.interview?.status === "completed") {
+    result += `- **Add data model details:** \`question_id: "data_model_details"\`\n`;
+    result += `- **Custom objects purpose:** \`question_id: "custom_objects_purpose"\`\n`;
+    result += `- **Business processes:** \`question_id: "business_processes"\`\n`;
+    result += `- **Integration systems:** \`question_id: "integration_systems"\`\n`;
+    result += `- **Reporting needs:** \`question_id: "reporting_needs"\`\n`;
   }
   result += `- **Reset context:** \`action: "reset_context"\`\n`;
   
@@ -595,7 +659,233 @@ async function saveContext(context) {
   await fs.writeFile(CONTEXT_FILE, JSON.stringify(context, null, 2));
 }
 
+async function quickSetupContext({ full_name, email, role, company_name, industry, business_process_description }) {
+  // Validate required fields
+  const missingFields = [];
+  if (!full_name) missingFields.push('full_name');
+  if (!email) missingFields.push('email');
+  if (!role) missingFields.push('role');
+  if (!company_name) missingFields.push('company_name');
+  if (!industry) missingFields.push('industry');
+  if (!business_process_description) missingFields.push('business_process_description');
+  
+  if (missingFields.length > 0) {
+    return {
+      content: [{
+        type: "text",
+        text: `❌ **Missing required fields for quick setup:**\n\n${missingFields.map(field => `- ${field}`).join('\n')}\n\n` +
+              `**Example usage:**\n` +
+              `\`\`\`json\n` +
+              `{\n` +
+              `  "action": "quick_setup",\n` +
+              `  "full_name": "Max Mustermann",\n` +
+              `  "email": "max@company.com",\n` +
+              `  "role": "Sales Manager",\n` +
+              `  "company_name": "Mustermann GmbH",\n` +
+              `  "industry": "Software & Technology",\n` +
+              `  "business_process_description": "Wir sind ein IT-Dienstleister der... [hier kompletten Geschäftsprozess erklären]"\n` +
+              `}\n` +
+              `\`\`\``
+      }]
+    };
+  }
+  
+  // Create complete context
+  const context = {
+    personal: {
+      name: full_name,
+      email: email,
+      role: role
+    },
+    business: {
+      company_name: company_name,
+      industry: industry,
+      business_focus: business_process_description
+    },
+    data_model: {},
+    created_at: new Date().toISOString(),
+    interview: {
+      status: "completed",
+      started_at: new Date().toISOString(),
+      completed_at: new Date().toISOString(),
+      pending_questions: [],
+      answered_questions: [
+        {
+          id: "quick_setup_all",
+          category: "business",
+          question: "Complete business process setup",
+          type: "quick_setup",
+          answer: "All information provided via quick setup",
+          answered_at: new Date().toISOString()
+        }
+      ]
+    }
+  };
+  
+  await saveContext(context);
+  
+  return {
+    content: [{
+      type: "text",
+      text: `🎉 **Quick Setup Complete!**\n\n` +
+            `All your information has been saved successfully:\n\n` +
+            `## 👤 Personal Information\n` +
+            `- **Name:** ${full_name}\n` +
+            `- **Email:** ${email}\n` +
+            `- **Position:** ${role}\n\n` +
+            `## 🏢 Business Information\n` +
+            `- **Company:** ${company_name}\n` +
+            `- **Industry:** ${industry}\n` +
+            `- **Business Process:** ${business_process_description.substring(0, 150)}${business_process_description.length > 150 ? '...' : ''}\n\n` +
+            `## ✅ Status\n` +
+            `- **Personal Information:** ✅ Complete\n` +
+            `- **Business Information:** ✅ Complete\n` +
+            `- **Overall Completeness:** 67%\n\n` +
+            `💡 **Next steps:**\n` +
+            `- Use \`suggest_questions\` for data model questions\n` +
+            `- The AI now knows you and can provide personalized support!`
+    }]
+  };
+}
+
 // Export function to get context for other tools
 export async function getUserContext() {
   return await loadContext();
+}
+
+// Handle additional questions after basic interview is completed
+async function handleAdditionalQuestion(questionId, answer, context) {
+  // Ensure context structure exists
+  if (!context.data_model) context.data_model = {};
+  if (!context.interview) context.interview = {};
+  if (!context.interview.answered_questions) context.interview.answered_questions = [];
+  
+  // Define common additional questions
+  const additionalQuestions = {
+    'data_model_details': {
+      id: 'data_model_details',
+      category: 'data_model',
+      question: 'Can you describe your Salesforce data model? What custom objects, fields, and relationships are important to your business?',
+      type: 'textarea',
+      context_field: 'model_description'
+    },
+    'custom_objects_purpose': {
+      id: 'custom_objects_purpose',
+      category: 'data_model',
+      question: 'What are the main purposes of your custom objects in Salesforce?',
+      type: 'textarea',
+      context_field: 'custom_objects_purpose'
+    },
+    'business_processes': {
+      id: 'business_processes',
+      category: 'data_model',
+      question: 'What are your main business processes that you track in Salesforce?',
+      type: 'textarea',
+      context_field: 'business_processes'
+    },
+    'integration_systems': {
+      id: 'integration_systems',
+      category: 'data_model',
+      question: 'What external systems do you integrate with Salesforce?',
+      type: 'textarea',
+      context_field: 'integration_systems'
+    },
+    'reporting_needs': {
+      id: 'reporting_needs',
+      category: 'data_model',
+      question: 'What kind of reports and dashboards are most important to your business?',
+      type: 'textarea',
+      context_field: 'reporting_needs'
+    }
+  };
+  
+  // Check if this is a predefined additional question
+  const questionDef = additionalQuestions[questionId];
+  
+  if (questionDef) {
+    // Store the answer in the data_model context
+    context.data_model[questionDef.context_field] = answer;
+    
+    // Add to answered questions
+    context.interview.answered_questions.push({
+      ...questionDef,
+      answer: answer,
+      answered_at: new Date().toISOString()
+    });
+    
+    await saveContext(context);
+    
+    let result = `✅ **Additional information saved!**\n\n`;
+    result += `**${questionDef.question}**\n`;
+    result += `*Your answer:* ${answer}\n\n`;
+    result += `💡 **This information has been added to your data model context.**\n\n`;
+    result += `**Available additional questions:**\n`;
+    
+    // Show other available additional questions
+    for (const [qId, qDef] of Object.entries(additionalQuestions)) {
+      if (qId !== questionId && !context.data_model[qDef.context_field]) {
+        result += `- **${qDef.category.replace('_', ' ')}:** Use \`question_id: "${qId}"\`\n`;
+      }
+    }
+    
+    result += `\n💡 **Tip:** Use \`suggest_questions\` for intelligent questions based on your Salesforce installation.`;
+    
+    return {
+      content: [{
+        type: "text",
+        text: result
+      }]
+    };
+  }
+  
+  // Handle dynamic questions from suggest_questions
+  // Check if this looks like a question ID from suggest_questions
+  if (questionId.includes('_')) {
+    const [category, ...rest] = questionId.split('_');
+    const contextField = questionId.replace(/\d+$/, ''); // Remove trailing numbers
+    
+    // Store in appropriate context section
+    const targetSection = category === 'data' ? 'data_model' : 
+                         category === 'business' ? 'business' : 
+                         category === 'personal' ? 'personal' : 'data_model';
+    
+    if (!context[targetSection]) context[targetSection] = {};
+    context[targetSection][contextField] = answer;
+    
+    // Add to answered questions
+    context.interview.answered_questions.push({
+      id: questionId,
+      category: category,
+      question: `Additional question: ${questionId}`,
+      type: 'dynamic',
+      answer: answer,
+      answered_at: new Date().toISOString()
+    });
+    
+    await saveContext(context);
+    
+    return {
+      content: [{
+        type: "text",
+        text: `✅ **Answer saved!**\n\n` +
+              `**Question ID:** ${questionId}\n` +
+              `**Your answer:** ${answer}\n\n` +
+              `This information has been added to your context.\n\n` +
+              `💡 Use \`show_context\` to see all stored information.`
+      }]
+    };
+  }
+  
+  // If question ID is not recognized, provide helpful guidance
+  return {
+    content: [{
+      type: "text",
+      text: `❌ **Question ID not recognized:** ${questionId}\n\n` +
+            `**Available additional questions:**\n` +
+            Object.entries(additionalQuestions).map(([qId, qDef]) => 
+              `- **${qDef.category.replace('_', ' ')}:** \`${qId}\` - ${qDef.question.substring(0, 80)}...`
+            ).join('\n') + '\n\n' +
+            `💡 **Or use \`suggest_questions\` for intelligent questions based on your Salesforce data.**`
+    }]
+  };
 }

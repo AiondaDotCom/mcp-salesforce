@@ -16,6 +16,8 @@ import { reauth, handleReauth } from './tools/auth.js';
 import { salesforceLearnTool, handleSalesforceLearn } from './tools/learn.js';
 import { salesforceInstallationInfoTool, handleSalesforceInstallationInfo } from './tools/installation-info.js';
 import { salesforceLearnContextTool, handleSalesforceLearnContext } from './tools/learn-context.js';
+import { BACKUP_TOOLS, handleSalesforceBackup, handleSalesforceBackupList } from './tools/backup.js';
+import { TIME_MACHINE_TOOLS, SalesforceTimeMachine } from './tools/time_machine.js';
 
 // Load environment variables
 config();
@@ -51,7 +53,10 @@ class MCPSalesforceServer {
           updateTool,
           deleteTool,
           describeTool,
-          reauth
+          reauth,
+          BACKUP_TOOLS.salesforce_backup,
+          BACKUP_TOOLS.salesforce_backup_list,
+          TIME_MACHINE_TOOLS[0]
         ]
       };
     });
@@ -95,6 +100,15 @@ class MCPSalesforceServer {
           case 'salesforce_auth':
             // Special case: auth doesn't need existing client
             return await this.handleAuth(args);
+          
+          case 'salesforce_backup':
+            return await handleSalesforceBackup(args, this.salesforceClient);
+          
+          case 'salesforce_backup_list':
+            return await handleSalesforceBackupList(args);
+          
+          case 'salesforce_time_machine_query':
+            return await this.handleTimeMachineQuery(args);
           
           default:
             throw new Error(`Unknown tool: ${name}`);
@@ -188,6 +202,83 @@ class MCPSalesforceServer {
   }
 
   /**
+   * Handle Time Machine queries
+   */
+  async handleTimeMachineQuery(args) {
+    try {
+      const { operation, backupDirectory = './backups', ...operationArgs } = args;
+      const timeMachine = new SalesforceTimeMachine(backupDirectory);
+
+      let result;
+      
+      switch (operation) {
+        case 'list_backups':
+          const backups = await timeMachine.getAllBackups();
+          result = {
+            success: true,
+            backups: backups.map(b => ({
+              timestamp: b.timestamp,
+              path: b.path,
+              stats: b.manifest.downloadStats
+            })),
+            count: backups.length
+          };
+          break;
+
+        case 'query_at_point_in_time':
+          const { targetDate, objectType, filters } = operationArgs;
+          if (!targetDate || !objectType) {
+            throw new Error('targetDate and objectType are required for point-in-time queries');
+          }
+          result = await timeMachine.queryAtPointInTime(targetDate, objectType, filters);
+          break;
+
+        case 'compare_over_time':
+          const { startDate, endDate, objectType: compObjectType, filters: compFilters } = operationArgs;
+          if (!startDate || !endDate || !compObjectType) {
+            throw new Error('startDate, endDate, and objectType are required for comparison queries');
+          }
+          result = await timeMachine.compareDataOverTime(startDate, endDate, compObjectType, compFilters);
+          break;
+
+        case 'get_record_history':
+          const { recordId, objectType: histObjectType } = operationArgs;
+          if (!recordId || !histObjectType) {
+            throw new Error('recordId and objectType are required for record history queries');
+          }
+          result = await timeMachine.getRecordHistory(recordId, histObjectType);
+          break;
+
+        default:
+          throw new Error(`Unknown Time Machine operation: ${operation}`);
+      }
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: result.success 
+              ? `🕰️ Time Machine Query Results:\n\n${JSON.stringify(result, null, 2)}`
+              : `❌ Time Machine Query Failed: ${result.error}`
+          }
+        ],
+        isError: !result.success
+      };
+
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `❌ Time Machine operation failed: ${error.message}`
+          }
+        ],
+        isError: true
+      };
+    }
+  }
+
+  /**
    * Detect if an error is authentication-related
    */
   isAuthenticationError(error) {
@@ -245,3 +336,5 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     process.exit(1);
   });
 }
+
+export { MCPSalesforceServer };

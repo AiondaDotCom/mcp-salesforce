@@ -94,3 +94,6 @@ jspm_packages/
 # MCP Salesforce specific
 *.log
 .mcp-salesforce.json
+backups/
+test-backups-mcp/
+demo-backups/

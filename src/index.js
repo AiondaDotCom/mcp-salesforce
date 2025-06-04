@@ -16,7 +16,7 @@ import { reauth, handleReauth } from './tools/auth.js';
 import { salesforceLearnTool, handleSalesforceLearn } from './tools/learn.js';
 import { salesforceInstallationInfoTool, handleSalesforceInstallationInfo } from './tools/installation-info.js';
 import { salesforceLearnContextTool, handleSalesforceLearnContext } from './tools/learn-context.js';
-import { BACKUP_TOOLS, handleSalesforceBackup, handleSalesforceBackupList } from './tools/backup.js';
+import { BACKUP_TOOLS, handleSalesforceBackup, handleSalesforceBackupList, handleSalesforceBackupStatus } from './tools/backup.js';
 import { TIME_MACHINE_TOOLS, SalesforceTimeMachine } from './tools/time_machine.js';
 
 // Load environment variables
@@ -56,6 +56,7 @@ class MCPSalesforceServer {
           reauth,
           BACKUP_TOOLS.salesforce_backup,
           BACKUP_TOOLS.salesforce_backup_list,
+          BACKUP_TOOLS.salesforce_backup_status,
           TIME_MACHINE_TOOLS[0]
         ]
       };
@@ -106,6 +107,9 @@ class MCPSalesforceServer {
           
           case 'salesforce_backup_list':
             return await handleSalesforceBackupList(args);
+          
+          case 'salesforce_backup_status':
+            return await handleSalesforceBackupStatus(args, this.salesforceClient);
           
           case 'salesforce_time_machine_query':
             return await this.handleTimeMachineQuery(args);

@@ -1,6 +1,20 @@
 import { FileStorageManager } from './file-storage.js';
 import { OAuthFlow } from './oauth.js';
 
+// Ensure fetch is available - use built-in fetch (Node.js 18+) or import node-fetch
+const getFetch = async () => {
+  if (typeof globalThis.fetch !== 'undefined') {
+    return globalThis.fetch;
+  }
+  
+  try {
+    const { default: nodeFetch } = await import('node-fetch');
+    return nodeFetch;
+  } catch (error) {
+    throw new Error('fetch is not available. Please use Node.js 18+ or install node-fetch package.');
+  }
+};
+
 export class TokenManager {
   constructor(clientId, clientSecret, instanceUrl) {
     this.clientId = clientId;
@@ -162,6 +176,7 @@ export class TokenManager {
    */
   async testTokens() {
     try {
+      const fetch = await getFetch();
       const accessToken = await this.getValidAccessToken();
       
       // Make a simple API call to verify token validity

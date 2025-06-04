@@ -14,6 +14,9 @@ A **Model Context Protocol (MCP) server** that provides seamless integration wit
 - **📝 Full CRUD Operations** - Query, create, update, and delete any Salesforce records
 - **📊 Schema Inspection** - Get detailed information about objects and fields
 - **💡 Context-Aware Suggestions** - Provides intelligent field and object name suggestions
+- **💾 Comprehensive Backup System** - Complete data and file backup with support for all Salesforce file systems
+- **⏰ Time Machine Feature** - Point-in-time data recovery and historical analysis
+- **📁 Multi-Format File Support** - Backs up ContentVersions, Attachments, and Documents with proper metadata
 
 ## 🚀 Quick Start
 
@@ -240,6 +243,94 @@ Get schema information for objects and fields.
 {} // Empty parameters
 ```
 
+### `salesforce_backup`
+**💾 Umfassendes Backup-System für Salesforce** - Erstellt vollständige Backups aller Daten und Dateien mit detaillierter Wiederherstellungsinformation.
+
+```javascript
+// Vollständiges Backup erstellen
+{}
+
+// Inkrementelles Backup seit bestimmtem Datum
+{
+  "backup_type": "incremental",
+  "since_date": "2025-01-01T00:00:00Z"
+}
+
+// Backup mit spezifischen Optionen
+{
+  "options": {
+    "include_files": true,
+    "include_attachments": true,
+    "include_documents": true,
+    "parallel_downloads": 10
+  }
+}
+```
+
+**Was wird gesichert:**
+- **📊 Alle Objektdaten** - Sämtliche queryable Objekte mit bis zu 20 Feldern pro Objekt
+- **📁 Modern Files** - ContentVersions mit vollständigen Metadaten
+- **📎 Legacy Attachments** - Klassische Anhänge mit korrekten Dateierweiterungen
+- **📄 Documents** - Folder-basierte Dokumente aus dem Legacy-System
+- **🏗️ Schema-Informationen** - Komplette Objektstrukturen und Beziehungen
+- **📋 Backup-Manifest** - Detaillierte Statistiken und Wiederherstellungsinfo
+
+**Backup-Struktur:**
+```
+salesforce-backup-2025-06-04T16-16-35-660Z/
+├── metadata/           # Schema und Objektdefinitionen
+├── data/              # JSON-Daten aller Objekte
+├── files/
+│   ├── content-versions/  # Moderne Dateien
+│   ├── attachments/       # Legacy Anhänge
+│   └── documents/         # Legacy Dokumente
+└── backup-manifest.json   # Backup-Übersicht
+```
+
+### `salesforce_backup_list`
+**📋 Verfügbare Backups anzeigen** - Übersicht über alle lokalen Backups mit Statistiken und Metadaten.
+
+```javascript
+// Alle verfügbaren Backups auflisten
+{}
+
+// Details zu einem spezifischen Backup
+{
+  "backup_name": "salesforce-backup-2025-06-04T16-16-35-660Z"
+}
+```
+
+### `salesforce_time_machine`
+**⏰ Zeit-Reise durch Salesforce-Daten** - Analysiert Datenänderungen zwischen verschiedenen Backup-Zeitpunkten und ermöglicht gezielte Wiederherstellung.
+
+```javascript
+// Vergleiche aktuellen Zustand mit einem Backup
+{
+  "backup_timestamp": "2025-06-04T16:16:35.660Z",
+  "object_name": "Account"
+}
+
+// Zeige alle Änderungen seit einem bestimmten Backup
+{
+  "backup_timestamp": "2025-06-04T16:16:35.660Z",
+  "show_all_changes": true
+}
+
+// Detailanalyse für spezifische Datensätze
+{
+  "backup_timestamp": "2025-06-04T16:16:35.660Z",
+  "object_name": "Contact", 
+  "record_id": "003XX000008b6cYAQ"
+}
+```
+
+**Time Machine Funktionen:**
+- **📊 Datenvergleich** - Zeigt Unterschiede zwischen Backup und aktuellem Zustand
+- **🔍 Änderungshistorie** - Welche Felder wurden wann geändert
+- **🗑️ Gelöschte Datensätze** - Findet Datensätze, die seit dem Backup gelöscht wurden
+- **📈 Wachstumsanalyse** - Statistische Auswertung der Datenentwicklung
+- **🎯 Gezielte Wiederherstellung** - Präzise Identifikation von Änderungen
+
 ### `salesforce_auth`
 Authenticate with Salesforce. Automatically detects if authentication is needed and handles OAuth flow.
 
@@ -379,6 +470,137 @@ The server automatically discovers custom objects:
   }
 }
 ```
+
+## 💾 Backup & Time Machine Features
+
+### 🚀 Salesforce Backup System
+
+Das MCP Salesforce Server bietet ein **professionelles Backup-System**, das deine komplette Salesforce-Installation sichern kann:
+
+#### Was macht das Backup-System besonders?
+
+- **🎯 Vollständige Abdeckung**: Sichert alle drei Salesforce-Dateisysteme
+  - **Modern Files** (ContentDocument/ContentVersion) 
+  - **Legacy Attachments** (klassische Anhänge)
+  - **Documents** (folder-basierte Legacy-Dokumente)
+
+- **📊 Intelligente Datenerfassung**: 
+  - Alle queryable Objekte (Standard + Custom)
+  - Bis zu 20 Felder pro Objekt für umfassende Datensicherung
+  - Automatische Filterung von Binary-Feldern
+
+- **⚡ Hochperformant**:
+  - Parallele Downloads mit konfigurierbarer Concurrency
+  - Retry-Logic mit exponential backoff
+  - Batch-Verarbeitung für große Datenmengen
+
+#### Backup erstellen
+
+```
+Du: "Erstelle ein Backup meiner Salesforce-Daten"
+Claude: Startet automatisch das salesforce_backup Tool
+```
+
+**Backup-Ergebnis:**
+```
+✅ Backup erfolgreich erstellt!
+📊 Statistiken:
+- 7 Objekte gesichert
+- 1.247 Datensätze exportiert  
+- 6 Dateien heruntergeladen
+- 4.07 MB Gesamtgröße
+- Dauer: 23 Sekunden
+
+📁 Speicherort: /backups/salesforce-backup-2025-06-04T16-16-35-660Z/
+```
+
+#### Backup-Struktur
+
+```
+salesforce-backup-2025-06-04T16-16-35-660Z/
+├── backup-manifest.json     # Backup-Übersicht mit Statistiken
+├── metadata/
+│   ├── objects-schema.json  # Alle Objektdefinitionen
+│   └── file-manifest.json   # Datei-Download-Protokoll
+├── data/                    # JSON-Daten aller Objekte
+│   ├── Account.json         # Account-Datensätze
+│   ├── Contact.json         # Contact-Datensätze
+│   ├── Opportunity.json     # Opportunity-Datensätze
+│   └── CustomObject__c.json # Custom Object Daten
+└── files/                   # Alle Salesforce-Dateien
+    ├── content-versions/    # Moderne Dateien (.pdf, .docx, etc.)
+    ├── attachments/         # Legacy Anhänge
+    └── documents/           # Legacy Dokumente
+```
+
+### ⏰ Time Machine Feature
+
+Die **Time Machine** ermöglicht es, durch die Zeit zu reisen und Datenänderungen zu analysieren:
+
+#### Hauptfunktionen
+
+- **🔍 Datenvergleich**: Vergleicht aktuellen Zustand mit historischen Backups
+- **📊 Änderungsanalyse**: Zeigt genau, welche Felder sich geändert haben
+- **🗑️ Gelöschte Datensätze**: Findet Datensätze, die seit dem Backup gelöscht wurden
+- **📈 Trend-Analyse**: Statistische Auswertung der Datenentwicklung
+
+#### Time Machine verwenden
+
+```
+Du: "Vergleiche die aktuellen Account-Daten mit dem Backup vom 4. Juni"
+Claude: Verwendet salesforce_time_machine für detaillierte Analyse
+```
+
+**Beispiel-Ergebnis:**
+```
+⏰ Time Machine Analyse - Account Objekt
+📅 Backup: 2025-06-04T16:16:35.660Z vs. Aktuell
+
+📊 Änderungen gefunden:
+• Geänderte Datensätze: 3
+• Neue Datensätze: 2  
+• Gelöschte Datensätze: 1
+
+🔍 Details:
+Account "Aionda GmbH" (001XX000003DHPF):
+- BillingStreet: "Alte Straße 1" → "Königstraße 10a"
+- BillingCity: "München" → "Stuttgart"
+- LastModifiedDate: 2025-06-04 → 2025-06-04
+
+Account "TechCorp Ltd" (001XX000003DHPG):
+- Status: Active → Inactive
+- LastModifiedDate: 2025-06-03 → 2025-06-04
+```
+
+#### Praktische Anwendungsfälle
+
+1. **📋 Compliance & Audit**: Nachweis von Datenänderungen
+2. **🔧 Fehleranalyse**: "Was war vor dem Problem anders?"
+3. **📊 Datenqualität**: Überwachung von Datenintegrität
+4. **🚨 Change Management**: Kontrolle über kritische Änderungen
+5. **💡 Business Intelligence**: Trend-Analyse über Zeit
+
+### 🎯 Backup-Workflow Empfehlung
+
+```
+1. Erste Einrichtung:
+   Du: "Lerne meine Salesforce-Installation"
+   → Claude analysiert deine komplette Org
+   
+2. Regelmäßige Backups:
+   Du: "Erstelle ein Backup"
+   → Claude sichert alle Daten und Dateien
+   
+3. Überwachung:
+   Du: "Zeige mir alle verfügbaren Backups"
+   → Claude listet Backup-Historie auf
+   
+4. Analyse:
+   Du: "Was hat sich seit dem letzten Backup geändert?"
+   → Claude verwendet Time Machine für Vergleich
+```
+
+**💡 Pro-Tipp**: Kombiniere Learning + Backup + Time Machine für maximale Salesforce-Kontrolle!
 
 ## 🔒 Security
 

@@ -329,10 +329,21 @@ export class SalesforceBackupManager {
     
     logger.log(`   📊 Backing up ${dataObjects.length} queryable objects...`);
     
-    for (const obj of dataObjects.slice(0, 5)) { // Limit for demo
+    let backedUpObjects = 0;
+    let totalRecords = 0;
+    
+    for (const obj of dataObjects) {
       try {
+        // Get all queryable fields for this object
+        const describe = await this.client.describe(obj.name);
+        const queryableFields = describe.fields
+          .filter(field => field.type !== 'base64' && field.name !== 'Body') // Exclude binary fields
+          .map(field => field.name)
+          .slice(0, 20); // Limit to first 20 fields to avoid query complexity
+        
+        const fieldList = queryableFields.length > 0 ? queryableFields.join(', ') : 'Id, Name';
         const whereClause = sinceDate ? `WHERE LastModifiedDate > ${sinceDate}` : '';
-        const soql = `SELECT Id, Name FROM ${obj.name} ${whereClause} LIMIT 100`;
+        const soql = `SELECT ${fieldList} FROM ${obj.name} ${whereClause} LIMIT 1000`;
         
         const result = await this.client.query(soql);
         
@@ -342,13 +353,19 @@ export class SalesforceBackupManager {
             JSON.stringify(result.records, null, 2)
           );
           
-          logger.log(`   ✅ ${obj.name}: ${result.records.length} records`);
+          backedUpObjects++;
+          totalRecords += result.records.length;
+          logger.log(`   ✅ ${obj.name}: ${result.records.length} records (${queryableFields.length} fields)`);
+        } else {
+          logger.log(`   ℹ️ ${obj.name}: No records found`);
         }
         
       } catch (error) {
         logger.warn(`   ⚠️ ${obj.name}: ${error.message}`);
       }
     }
+    
+    logger.log(`   📈 Summary: ${backedUpObjects} objects, ${totalRecords} total records`);
   }
 
   /**
@@ -362,7 +379,7 @@ export class SalesforceBackupManager {
       logger.log('   📁 Discovering ContentVersion files...');
       try {
         const whereClause = sinceDate ? `WHERE LastModifiedDate > ${sinceDate} AND` : 'WHERE';
-        const query = `SELECT Id, Title, FileType, ContentSize FROM ContentVersion ${whereClause} IsLatest = true LIMIT 50`;
+        const query = `SELECT Id, Title, FileType, ContentSize FROM ContentVersion ${whereClause} IsLatest = true LIMIT 2000`;
         
         const result = await this.client.query(query);
         
@@ -388,7 +405,7 @@ export class SalesforceBackupManager {
       logger.log('   📎 Discovering Attachment files...');
       try {
         const whereClause = sinceDate ? `WHERE LastModifiedDate > ${sinceDate}` : '';
-        const query = `SELECT Id, Name, ContentType, BodyLength FROM Attachment ${whereClause} LIMIT 25`;
+        const query = `SELECT Id, Name, ContentType, BodyLength FROM Attachment ${whereClause} LIMIT 1000`;
         
         const result = await this.client.query(query);
         
@@ -415,7 +432,7 @@ export class SalesforceBackupManager {
       logger.log('   📄 Discovering Document files...');
       try {
         const whereClause = sinceDate ? `WHERE LastModifiedDate > ${sinceDate}` : '';
-        const query = `SELECT Id, Name, Type, BodyLength FROM Document ${whereClause} LIMIT 25`;
+        const query = `SELECT Id, Name, Type, BodyLength FROM Document ${whereClause} LIMIT 1000`;
         
         const result = await this.client.query(query);
         

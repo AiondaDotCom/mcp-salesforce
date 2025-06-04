@@ -382,11 +382,12 @@ The server automatically discovers custom objects:
 
 ## 🔒 Security
 
-- **Token Storage**: Refresh tokens stored securely in macOS Keychain
+- **Token Storage**: Refresh tokens stored securely in `cache/salesforce-tokens.json` with restricted file permissions (600)
 - **No Plaintext Secrets**: Access tokens kept in memory only
 - **Automatic Refresh**: Tokens refreshed automatically before expiration
 - **Secure Cleanup**: Tokens removed from memory after use
 - **Input Validation**: All inputs validated and sanitized
+- **Migration**: Automatic migration from legacy Keychain storage to file-based storage
 
 ## 🧪 Testing
 
@@ -412,6 +413,33 @@ npm run setup -- --validate
 2. **Token expiration**: When tokens expire, Claude detects this and prompts for re-authentication  
 3. **Invalid credentials**: Clear error messages guide you to fix configuration issues
 4. **Session expired**: Automatic detection with friendly prompts to re-authenticate
+
+### Token Security
+
+**🔒 Secure Token Storage**: Authentication tokens are stored securely in the local file system with strict permissions.
+
+**Security Features:**
+- **File Permissions**: Token files are created with `0600` permissions (readable/writable only by owner)
+- **Location**: Tokens stored in `cache/salesforce-tokens.json` (excluded from git)
+- **Automatic Security**: Permission verification and automatic fixing if needed
+- **No Network Exposure**: Tokens never leave your local machine
+- **Keychain Migration**: Upgraded from macOS Keychain to reliable file-based storage
+
+**Security Verification:**
+```bash
+# Check token file security
+ls -la cache/salesforce-tokens.json
+# Should show: -rw------- (600 permissions)
+
+# Run security test
+node test-token-security.js
+```
+
+**What this means:**
+- Other users on your system **cannot** read your Salesforce tokens
+- Only your user account has access to the authentication data
+- Prevents unauthorized access to your Salesforce organization
+- Complies with security best practices for credential storage
 
 ### Quick Fix in Claude Desktop
 If you get authentication errors, simply tell Claude:

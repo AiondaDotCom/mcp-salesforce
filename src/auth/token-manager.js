@@ -1,4 +1,4 @@
-import { KeychainManager } from './keychain.js';
+import { FileStorageManager } from './file-storage.js';
 import { OAuthFlow } from './oauth.js';
 
 export class TokenManager {
@@ -6,7 +6,7 @@ export class TokenManager {
     this.clientId = clientId;
     this.clientSecret = clientSecret;
     this.instanceUrl = instanceUrl;
-    this.keychain = new KeychainManager();
+    this.storage = new FileStorageManager();
     this.currentTokens = null;
     this.refreshPromise = null; // Prevent concurrent refresh attempts
   }
@@ -16,7 +16,7 @@ export class TokenManager {
    */
   async initialize() {
     try {
-      this.currentTokens = await this.keychain.getTokens();
+      this.currentTokens = await this.storage.getTokens();
       if (this.currentTokens) {
         
         // Check if tokens need refresh
@@ -99,8 +99,8 @@ export class TokenManager {
         updated_at: new Date().toISOString()
       };
 
-      // Store updated tokens in Keychain
-      await this.keychain.storeTokens(this.currentTokens);
+      // Store updated tokens in file storage
+      await this.storage.storeTokens(this.currentTokens);
       
     } catch (error) {
       
@@ -120,7 +120,7 @@ export class TokenManager {
       const tokens = await oauth.startFlow();
       
       // Store tokens securely
-      await this.keychain.storeTokens(tokens);
+      await this.storage.storeTokens(tokens);
       this.currentTokens = tokens;
       
       return tokens;
@@ -133,7 +133,7 @@ export class TokenManager {
    * Clear all stored tokens
    */
   async clearTokens() {
-    await this.keychain.clearTokens();
+    await this.storage.clearTokens();
     this.currentTokens = null;
   }
 

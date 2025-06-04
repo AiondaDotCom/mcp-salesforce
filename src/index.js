@@ -12,7 +12,7 @@ import { createTool, executeCreate } from './tools/create.js';
 import { updateTool, executeUpdate } from './tools/update.js';
 import { deleteTool, executeDelete } from './tools/delete.js';
 import { describeTool, executeDescribe } from './tools/describe.js';
-import { reauth, handleReauth } from './tools/reauth.js';
+import { reauth, handleReauth } from './tools/auth.js';
 
 // Load environment variables
 config();

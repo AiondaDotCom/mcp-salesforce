@@ -1,3 +1,5 @@
+import { hasInstallationDocumentation } from './learn.js';
+
 export const queryTool = {
   name: "salesforce_query",
   description: "Execute SOQL queries against any Salesforce object. Supports SELECT, WHERE, ORDER BY, LIMIT, and other SOQL features.",
@@ -16,6 +18,21 @@ export const queryTool = {
 export async function executeQuery(client, args) {
   try {
     const { query } = args;
+    
+    // Check if installation has been learned
+    const hasDocumentation = await hasInstallationDocumentation();
+    if (!hasDocumentation) {
+      return {
+        content: [{
+          type: "text",
+          text: `⚠️ **Salesforce-Installation noch nicht gelernt**\n\n` +
+                `Bevor du SOQL-Abfragen ausführst, sollte die KI deine Salesforce-Installation kennenlernen.\n\n` +
+                `🚀 **Empfehlung:** Führe zuerst das \`salesforce_learn\` Tool aus, um alle verfügbaren Objekte und Felder zu analysieren.\n\n` +
+                `Danach kann ich dir bei intelligenten Abfragen helfen und die richtigen Feld- und Objektnamen vorschlagen.\n\n` +
+                `**Deine Abfrage wird trotzdem ausgeführt:**`
+        }]
+      };
+    }
     
     if (!query || typeof query !== 'string') {
       throw new Error('Query parameter is required and must be a string');

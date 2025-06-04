@@ -11,6 +11,10 @@ yarn-error.log*
 .env.test.local
 .env.production.local
 
+# Cache directory
+cache/
+*.cache
+
 # Runtime data
 pids
 *.pid

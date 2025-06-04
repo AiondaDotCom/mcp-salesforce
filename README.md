@@ -8,10 +8,12 @@ A **Model Context Protocol (MCP) server** that provides seamless integration wit
 - **🚀 Zero Manual Setup** - No need to run terminal commands or manual OAuth flows
 - **🔐 OAuth-Only Authentication** - Secure browser-based setup with automatic token refresh
 - **🌐 Universal Salesforce Integration** - Works with any Salesforce org, including custom objects and fields  
+- **🧠 Smart Installation Learning** - Analyzes your complete Salesforce setup to provide intelligent assistance
 - **🔍 Dynamic Schema Discovery** - Automatically adapts to your Salesforce configuration
 - **🔒 Secure Token Storage** - Uses macOS Keychain for production-grade security
 - **📝 Full CRUD Operations** - Query, create, update, and delete any Salesforce records
 - **📊 Schema Inspection** - Get detailed information about objects and fields
+- **💡 Context-Aware Suggestions** - Provides intelligent field and object name suggestions
 
 ## 🚀 Quick Start
 
@@ -45,6 +47,12 @@ A **Model Context Protocol (MCP) server** that provides seamless integration wit
 - No terminal authentication required
 - Claude automatically detects when authentication is needed
 - Seamless OAuth flow directly from Claude Desktop
+
+**🧠 Smart Learning System**
+- Use `salesforce_learn` to analyze your complete Salesforce installation
+- Claude learns all your custom objects, fields, and relationships
+- Provides intelligent suggestions based on your specific setup
+- Context-aware assistance for complex Salesforce environments
 
 ## 📸 Demo Screenshots
 
@@ -119,6 +127,45 @@ Add to your Claude Desktop MCP configuration:
 
 ## 🛠️ Available Tools
 
+### `salesforce_learn`
+**🧠 Lernt deine komplette Salesforce-Installation kennen** - Analysiert alle Objekte, Felder und Anpassungen einmalig und speichert diese Informationen lokal für intelligente Unterstützung.
+
+```javascript
+// Einmalige Analyse der Salesforce-Installation
+{}
+
+// Erzwinge komplette Neuanalyse
+{
+  "force_refresh": true,
+  "detailed_relationships": true
+}
+```
+
+**Warum wichtig?** 
+- Claude lernt deine Custom Objects wie "Zeitabrechnung__c", "Projekt__c", etc.
+- Erkennt alle Custom Fields und deren Datentypen
+- Bietet intelligente Vorschläge basierend auf deiner spezifischen Konfiguration
+- Einmalig ausführen, dann profitiert die KI dauerhaft davon
+
+### `salesforce_installation_info`
+**📊 Überblick über deine gelernte Salesforce-Installation** - Zeigt verfügbare Objekte, Custom Fields und Anpassungen.
+
+```javascript
+// Gesamtüberblick über die Installation
+{}
+
+// Details zu einem spezifischen Objekt
+{
+  "object_name": "Zeitabrechnung__c"
+}
+
+// Suche nach bestimmten Feldern
+{
+  "field_search": "email",
+  "show_custom_only": true
+}
+```
+
 ### `salesforce_query`
 Execute SOQL queries against any Salesforce object.
 
@@ -128,6 +175,11 @@ Execute SOQL queries against any Salesforce object.
   "query": "SELECT Id, FirstName, LastName, Email FROM Contact WHERE CreatedDate = THIS_MONTH ORDER BY CreatedDate DESC LIMIT 10"
 }
 ```
+
+**🧠 Smart Learning Integration:** 
+- Warnt automatisch, wenn Installation noch nicht gelernt wurde
+- Schlägt verfügbare Objekte und Felder vor
+- Hilft bei korrekten API-Namen
 
 ### `salesforce_create`  
 Create new records in any Salesforce object.
@@ -145,6 +197,8 @@ Create new records in any Salesforce object.
 }
 ```
 
+**🧠 Smart Context:** Zeigt automatisch erforderliche Felder für das gewählte Objekt an, wenn die Installation gelernt wurde.
+
 ### `salesforce_update`
 Update existing records.
 
@@ -159,6 +213,8 @@ Update existing records.
   }
 }
 ```
+
+**🧠 Smart Context:** Berücksichtigt Feld-Berechtigungen und Datentypen aus der gelernten Installation.
 
 ### `salesforce_delete`
 Delete records (⚠️ permanent action).
@@ -209,7 +265,82 @@ This tool is **automatically suggested** when:
 - Authentication errors occur
 - First-time setup is needed
 
+## 🧠 Smart Learning System
+
+### Warum ist das Learning wichtig?
+
+Jede Salesforce-Installation ist einzigartig mit:
+- **Custom Objects** wie "Zeitabrechnung__c", "Projekt__c", "Kundenbetreuung__c"
+- **Custom Fields** auf Standard-Objekten
+- **Spezifische Workflows** und Validierungsregeln
+- **Individuelle Datenstrukturen**
+
+Das normale Trainingsmodell der KI kennt nur Salesforce-Standardobjekte. Ohne Kenntnisse deiner spezifischen Installation kann die KI nicht intelligent assistieren.
+
+### Wie funktioniert das Learning?
+
+1. **Einmalige Analyse**: `salesforce_learn` analysiert deine komplette Installation
+2. **Lokale Dokumentation**: Alle Objekte, Felder und Beziehungen werden lokal gespeichert
+3. **Intelligente Unterstützung**: Claude kann dann präzise Vorschläge machen und komplexe Fragen beantworten
+
+### Beispiel-Workflow:
+
+```
+Du: "Gibt es eine Zeitabrechnung für Juli 2025?"
+
+Ohne Learning:
+❌ Claude: "Ich kenne kein Objekt namens 'Zeitabrechnung'"
+
+Mit Learning:
+✅ Claude: "Ich prüfe das Objekt 'Zeitabrechnung__c' nach Einträgen für Juli 2025..."
+   Führt automatisch die richtige SOQL-Abfrage aus
+```
+
+### Wann solltest du das Learning verwenden?
+
+- **Beim ersten Setup** - Einmalig nach der Installation
+- **Bei größeren Änderungen** - Wenn neue Custom Objects hinzugefügt werden
+- **Bei Problemen** - Wenn Claude Objekte oder Felder nicht findet
+
+### Was wird gelernt?
+
+- **Alle SObjects** (Standard und Custom)
+- **Alle Felder** mit Datentypen und Berechtigungen
+- **Beziehungen** zwischen Objekten
+- **Picklist-Werte** und Validierungsregeln
+- **Erforderliche Felder** für bessere Validation
+
+**💡 Das Learning läuft nur einmal und macht dann alle weiteren Interaktionen viel intelligenter!**
+
 ## 💡 Usage Examples
+
+### 🚀 Erste Schritte nach der Installation
+
+1. **Authentifizierung**: Claude erkennt automatisch, wenn Authentifizierung benötigt wird
+2. **Learning starten**: 
+   ```
+   Du: "Lerne meine Salesforce-Installation kennen"
+   Claude: Verwendet automatisch das salesforce_learn Tool
+   ```
+3. **Installation erkunden**:
+   ```
+   Du: "Zeige mir einen Überblick über meine Salesforce-Installation"
+   Claude: Verwendet salesforce_installation_info für eine Zusammenfassung
+   ```
+
+### 🔍 Intelligente Abfragen mit gelernter Installation
+
+```
+Du: "Zeige mir alle Projekte aus diesem Jahr"
+Claude: Erkennt automatisch dein "Projekt__c" Custom Object und erstellt:
+SELECT Id, Name, StartDatum__c, Status__c FROM Projekt__c WHERE CALENDAR_YEAR(CreatedDate) = 2025
+```
+
+```
+Du: "Gibt es Zeitabrechnungen für Juli 2025?"
+Claude: Findet dein "Zeitabrechnung__c" Objekt und fragt:
+SELECT Id, Name, Monat__c, Stunden__c FROM Zeitabrechnung__c WHERE Monat__c = 'Juli 2025'
+```
 
 ### Query Examples
 

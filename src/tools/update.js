@@ -1,3 +1,5 @@
+import { hasInstallationDocumentation, getInstallationDocumentation } from './learn.js';
+
 export const updateTool = {
   name: "salesforce_update",
   description: "Update an existing record in any Salesforce object. Requires the record ID and field values to update.",
@@ -24,6 +26,14 @@ export const updateTool = {
 export async function executeUpdate(client, args) {
   try {
     const { sobject, id, data } = args;
+    
+    // Check if installation has been learned for better context
+    const hasDocumentation = await hasInstallationDocumentation();
+    let contextMessage = '';
+    
+    if (!hasDocumentation) {
+      contextMessage = `⚠️ **Tipp:** Verwende \`salesforce_learn\` um alle verfügbaren Objekte und Felder zu analysieren.\n\n`;
+    }
     
     if (!sobject || typeof sobject !== 'string') {
       throw new Error('sobject parameter is required and must be a string');
@@ -58,7 +68,7 @@ export async function executeUpdate(client, args) {
       content: [
         {
           type: "text",
-          text: `✅ Successfully updated ${sobject} record!\n\n` +
+          text: `${contextMessage}✅ Successfully updated ${sobject} record!\n\n` +
                 `Record ID: ${result.id}\n` +
                 `Object Type: ${result.sobject}\n\n` +
                 `Updated fields:\n${JSON.stringify(updateData, null, 2)}\n\n` +

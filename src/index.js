@@ -13,6 +13,8 @@ import { updateTool, executeUpdate } from './tools/update.js';
 import { deleteTool, executeDelete } from './tools/delete.js';
 import { describeTool, executeDescribe } from './tools/describe.js';
 import { reauth, handleReauth } from './tools/auth.js';
+import { salesforceLearnTool, handleSalesforceLearn } from './tools/learn.js';
+import { salesforceInstallationInfoTool, handleSalesforceInstallationInfo } from './tools/installation-info.js';
 
 // Load environment variables
 config();
@@ -40,6 +42,8 @@ class MCPSalesforceServer {
     this.server.setRequestHandler(ListToolsRequestSchema, async () => {
       return {
         tools: [
+          salesforceLearnTool,
+          salesforceInstallationInfoTool,
           queryTool,
           createTool,
           updateTool,
@@ -64,6 +68,12 @@ class MCPSalesforceServer {
         switch (name) {
           case 'salesforce_query':
             return await executeQuery(this.salesforceClient, args);
+          
+          case 'salesforce_learn':
+            return await handleSalesforceLearn(args, this.salesforceClient);
+          
+          case 'salesforce_installation_info':
+            return await handleSalesforceInstallationInfo(args);
           
           case 'salesforce_create':
             return await executeCreate(this.salesforceClient, args);

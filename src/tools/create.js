@@ -1,3 +1,5 @@
+import { hasInstallationDocumentation, getInstallationDocumentation } from './learn.js';
+
 export const createTool = {
   name: "salesforce_create",
   description: "Create a new record in any Salesforce object. Automatically handles required fields validation.",
@@ -21,6 +23,27 @@ export async function executeCreate(client, args) {
   try {
     const { sobject, data } = args;
     
+    // Check if installation has been learned and provide helpful context
+    const hasDocumentation = await hasInstallationDocumentation();
+    let contextMessage = '';
+    
+    if (!hasDocumentation) {
+      contextMessage = `⚠️ **Tipp:** Die Salesforce-Installation wurde noch nicht analysiert. Verwende \`salesforce_learn\` um alle verfügbaren Objekte und Felder kennenzulernen.\n\n`;
+    } else {
+      // Provide context about the object if available
+      const documentation = await getInstallationDocumentation();
+      const objectInfo = documentation.objects[sobject];
+      if (objectInfo && !objectInfo.error) {
+        const requiredFields = Object.entries(objectInfo.fields)
+          .filter(([name, field]) => field.required)
+          .map(([name, field]) => `${field.label} (${name})`);
+        
+        if (requiredFields.length > 0) {
+          contextMessage = `💡 **Erforderliche Felder für ${objectInfo.basic_info.label}:** ${requiredFields.join(', ')}\n\n`;
+        }
+      }
+    }
+    
     if (!sobject || typeof sobject !== 'string') {
       throw new Error('sobject parameter is required and must be a string');
     }
@@ -40,7 +63,7 @@ export async function executeCreate(client, args) {
       content: [
         {
           type: "text",
-          text: `✅ Successfully created ${sobject} record!\n\n` +
+          text: `${contextMessage}✅ Successfully created ${sobject} record!\n\n` +
                 `Record ID: ${result.id}\n` +
                 `Object Type: ${result.sobject}\n\n` +
                 `Created with data:\n${JSON.stringify(data, null, 2)}\n\n` +

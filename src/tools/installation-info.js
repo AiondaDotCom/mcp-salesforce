@@ -6,6 +6,7 @@
  */
 
 import { getInstallationDocumentation, hasInstallationDocumentation } from './learn.js';
+import { getUserContext } from './learn-context.js';
 import { logger } from '../utils/debug.js';
 
 export const salesforceInstallationInfoTool = {
@@ -104,7 +105,7 @@ export async function handleSalesforceInstallationInfo(args) {
     }
     
     // General installation overview
-    return handleGeneralOverview(documentation, {
+    return await handleGeneralOverview(documentation, {
       show_custom_only,
       include_relationships,
       detailed_fields,
@@ -393,10 +394,87 @@ function handleFieldSearch(searchTerm, documentation, options) {
   };
 }
 
-function handleGeneralOverview(documentation, options) {
+async function handleGeneralOverview(documentation, options) {
   const { show_custom_only, include_relationships, detailed_fields, include_permissions } = options;
   
   let result = `📊 **Salesforce Installation - Complete Overview**\n\n`;
+  
+  // Add user context if available and check for missing information
+  let contextWarning = '';
+  try {
+    const context = await getUserContext();
+    
+    // Check if we have basic user information
+    const hasPersonalInfo = context.personal?.name && context.personal?.email;
+    const hasBusinessInfo = context.business?.company_name && context.business?.industry;
+    const hasDataModelInfo = Object.keys(context.data_model || {}).length > 0;
+    
+    if (hasPersonalInfo || hasBusinessInfo) {
+      result = `📊 **Salesforce Installation - Complete Overview**\n`;
+      if (context.personal?.name) {
+        result += `*Kontext für: ${context.personal.name}`;
+        if (context.business?.company_name) {
+          result += ` (${context.business.company_name})`;
+        }
+        result += `*\n\n`;
+      }
+    }
+    
+    // Generate warnings for missing context
+    const missingContext = [];
+    if (!hasPersonalInfo) {
+      missingContext.push("👤 **Persönliche Informationen**");
+    }
+    if (!hasBusinessInfo) {
+      missingContext.push("🏢 **Geschäftliche Informationen**");
+    }
+    if (!hasDataModelInfo && documentation.summary?.custom_objects > 0) {
+      missingContext.push("🗃️ **Datenmodell-Kontext**");
+    }
+    
+    if (missingContext.length > 0) {
+      contextWarning = `\n## ⚠️ Fehlender Kontext für bessere Unterstützung\n\n`;
+      contextWarning += `Um Ihnen personalisierte und kontextbezogene Hilfe zu bieten, fehlen noch wichtige Informationen:\n\n`;
+      for (const missing of missingContext) {
+        contextWarning += `- ${missing}\n`;
+      }
+      contextWarning += `\n💡 **Empfehlung:** Starten Sie das Kontext-Interview:\n`;
+      contextWarning += `\`\`\`json\n`;
+      contextWarning += `{\n`;
+      contextWarning += `  "tool": "salesforce_learn_context",\n`;
+      contextWarning += `  "action": "start_interview"\n`;
+      contextWarning += `}\n`;
+      contextWarning += `\`\`\`\n\n`;
+      
+      if (hasPersonalInfo && hasBusinessInfo && !hasDataModelInfo) {
+        contextWarning += `Oder für erweiterte Datenmodell-Fragen:\n`;
+        contextWarning += `\`\`\`json\n`;
+        contextWarning += `{\n`;
+        contextWarning += `  "tool": "salesforce_learn_context",\n`;
+        contextWarning += `  "action": "suggest_questions",\n`;
+        contextWarning += `  "context_type": "data_model"\n`;
+        contextWarning += `}\n`;
+        contextWarning += `\`\`\`\n\n`;
+      }
+      contextWarning += `---\n\n`;
+    }
+    
+  } catch (error) {
+    // Context not available, suggest learning it
+    contextWarning = `\n## 💡 Personalisierung verfügbar\n\n`;
+    contextWarning += `Für bessere, personalisierte Unterstützung können Sie ein Kontext-Interview durchführen:\n\n`;
+    contextWarning += `\`\`\`json\n`;
+    contextWarning += `{\n`;
+    contextWarning += `  "tool": "salesforce_learn_context",\n`;
+    contextWarning += `  "action": "start_interview"\n`;
+    contextWarning += `}\n`;
+    contextWarning += `\`\`\`\n\n`;
+    contextWarning += `Dies hilft mir, Sie und Ihr Unternehmen kennenzulernen.\n\n`;
+    contextWarning += `---\n\n`;
+  }
+  
+  // Add context warning if needed
+  result += contextWarning;
   
   // Enhanced metadata info
   result += `## 📋 Installation Metadata\n`;

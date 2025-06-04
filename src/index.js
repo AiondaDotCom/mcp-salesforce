@@ -15,6 +15,7 @@ import { describeTool, executeDescribe } from './tools/describe.js';
 import { reauth, handleReauth } from './tools/auth.js';
 import { salesforceLearnTool, handleSalesforceLearn } from './tools/learn.js';
 import { salesforceInstallationInfoTool, handleSalesforceInstallationInfo } from './tools/installation-info.js';
+import { salesforceLearnContextTool, handleSalesforceLearnContext } from './tools/learn-context.js';
 
 // Load environment variables
 config();
@@ -44,6 +45,7 @@ class MCPSalesforceServer {
         tools: [
           salesforceLearnTool,
           salesforceInstallationInfoTool,
+          salesforceLearnContextTool,
           queryTool,
           createTool,
           updateTool,
@@ -74,6 +76,9 @@ class MCPSalesforceServer {
           
           case 'salesforce_installation_info':
             return await handleSalesforceInstallationInfo(args);
+          
+          case 'salesforce_learn_context':
+            return await handleSalesforceLearnContext(args);
           
           case 'salesforce_create':
             return await executeCreate(this.salesforceClient, args);

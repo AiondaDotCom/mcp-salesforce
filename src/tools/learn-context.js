@@ -18,14 +18,14 @@ const CONTEXT_FILE = path.join(__dirname, '../../cache', 'salesforce-context.jso
 
 export const salesforceLearnContextTool = {
   name: "salesforce_learn_context",
-  description: "Learn and store personal/business context about the user and their Salesforce data model relationships. This helps provide better context-aware assistance across sessions.",
+  description: "Learn and store personal/business context about the user and their Salesforce data model relationships. This helps provide better context-aware assistance across sessions. PROACTIVELY CAPTURE AHA MOMENTS: Whenever you discover something important about the user's workflow, business processes, preferences, challenges, or breakthrough insights during conversations, automatically use store_learning to preserve this knowledge. Look for moments when the user reveals key information, expresses frustration, shares successful strategies, or has realizations - these are valuable learnings that should be stored immediately.",
   inputSchema: {
     type: "object",
     properties: {
       action: {
         type: "string",
-        enum: ["start_interview", "answer_question", "show_context", "reset_context", "suggest_questions", "quick_setup"],
-        description: "Action to perform: start_interview (begin learning), answer_question (provide answers), show_context (display stored context), reset_context (clear all), suggest_questions (get intelligent questions based on data model), quick_setup (explain everything in one go)"
+        enum: ["start_interview", "answer_question", "show_context", "reset_context", "suggest_questions", "quick_setup", "store_learning"],
+        description: "Action to perform: start_interview (begin learning), answer_question (provide answers), show_context (display stored context), reset_context (clear all), suggest_questions (get intelligent questions based on data model), quick_setup (explain everything in one go), store_learning (AUTOMATICALLY capture breakthrough insights, aha moments, user preferences, workflow patterns, pain points, or any valuable context discovered during conversation)"
       },
       question_id: {
         type: "string",
@@ -37,8 +37,7 @@ export const salesforceLearnContextTool = {
       },
       context_type: {
         type: "string",
-        enum: ["personal", "business", "data_model", "all"],
-        description: "Type of context to focus on (for show_context and suggest_questions)",
+        description: "Type of context to focus on (for show_context and suggest_questions). Can be any section name like 'personal', 'business', 'data_model', 'technical_preferences', etc., or 'all' for everything",
         default: "all"
       },
       // Quick setup parameters
@@ -65,6 +64,24 @@ export const salesforceLearnContextTool = {
       business_process_description: {
         type: "string",
         description: "Complete description of your business processes, how you use Salesforce, what you do, etc. (for quick_setup)"
+      },
+      // Dynamic learning parameters
+      section: {
+        type: "string",
+        description: "Context section to store the learning in (for store_learning). Use descriptive names that capture the nature of the insight: 'aha_moments' for breakthrough realizations, 'pain_points' for challenges discovered, 'workflow_insights' for process discoveries, 'preferences' for user likes/dislikes, 'success_patterns' for what works well, 'technical_discoveries' for system insights, etc. Will be created dynamically if it doesn't exist."
+      },
+      key: {
+        type: "string",
+        description: "Key name for the learning (for store_learning). Use specific, descriptive names that capture the insight: 'critical_realization_about_X', 'main_frustration_with_Y', 'breakthrough_solution_for_Z', 'preferred_approach_to_A', 'discovered_workflow_pattern_B', etc. Be specific about what was learned."
+      },
+      value: {
+        type: "string",
+        description: "Value/content of the learning (for store_learning)"
+      },
+      overwrite: {
+        type: "boolean",
+        description: "Whether to overwrite existing values for the same key (for store_learning). Default: false",
+        default: false
       }
     },
     required: ["action"]
@@ -72,7 +89,7 @@ export const salesforceLearnContextTool = {
 };
 
 export async function handleSalesforceLearnContext(args) {
-  const { action, question_id, answer, context_type = "all", full_name, email, role, company_name, industry, business_process_description } = args;
+  const { action, question_id, answer, context_type = "all", full_name, email, role, company_name, industry, business_process_description, section, key, value, overwrite = false } = args;
   
   try {
     switch (action) {
@@ -88,11 +105,13 @@ export async function handleSalesforceLearnContext(args) {
         return await suggestIntelligentQuestions(context_type);
       case "quick_setup":
         return await quickSetupContext({ full_name, email, role, company_name, industry, business_process_description });
+      case "store_learning":
+        return await storeDynamicLearning({ section, key, value, overwrite });
       default:
         return {
           content: [{
             type: "text",
-            text: `❌ **Invalid action:** ${action}\n\nSupported actions: start_interview, answer_question, show_context, reset_context, suggest_questions, quick_setup`
+            text: `❌ **Invalid action:** ${action}\n\nSupported actions: start_interview, answer_question, show_context, reset_context, suggest_questions, quick_setup, store_learning`
           }]
         };
     }
@@ -101,7 +120,7 @@ export async function handleSalesforceLearnContext(args) {
     return {
       content: [{
         type: "text",
-        text: `❌ **Error learning context:**\n\n${error.message}`
+        text: `❌ **Error:** ${error.message}`
       }]
     };
   }
@@ -223,7 +242,7 @@ async function answerContextQuestion(questionId, answer) {
   
   // Allow additional questions even after interview completion
   // Check if this is a data_model question or other additional questions
-  const isDataModelQuestion = questionId.startsWith('data_model_') || questionId.includes('data_model');
+  const isDataModelQuestion = questionId.startsWith('data_model') || questionId.includes('data_model');
   const predefinedAdditionalQuestions = ['data_model_details', 'custom_objects_purpose', 'business_processes', 'integration_systems', 'reporting_needs'];
   const isAdditionalQuestion = isDataModelQuestion || predefinedAdditionalQuestions.includes(questionId) || questionId.startsWith('additional_');
   
@@ -351,55 +370,86 @@ async function showStoredContext(contextType) {
   
   let result = `📋 **Your stored context**\n\n`;
   
-  // Check completion status
+  // Get all sections (excluding metadata fields)
+  const metadataFields = ['created_at', 'updated_at', 'interview'];
+  const allSections = Object.keys(context).filter(key => !metadataFields.includes(key));
   const hasPersonalInfo = context.personal?.name && context.personal?.email && context.personal?.role;
   const hasBusinessInfo = context.business?.company_name && context.business?.industry && context.business?.business_focus;
   const hasDataModelInfo = Object.keys(context.data_model || {}).length > 0;
   
   // Status overview
   result += `## 📊 Context Status\n`;
+  result += `- **Total Sections:** ${allSections.length}\n`;
   result += `- **Personal Information:** ${hasPersonalInfo ? '✅ Complete' : '⚠️ Incomplete'}\n`;
   result += `- **Business Information:** ${hasBusinessInfo ? '✅ Complete' : '⚠️ Incomplete'}\n`;
   result += `- **Data Model Context:** ${hasDataModelInfo ? '✅ Available' : '❌ Not captured'}\n`;
   
   const completionPercentage = Math.round(((hasPersonalInfo ? 1 : 0) + (hasBusinessInfo ? 1 : 0) + (hasDataModelInfo ? 1 : 0)) / 3 * 100);
-  result += `- **Overall Completeness:** ${completionPercentage}%\n\n`;
+  result += `- **Core Completeness:** ${completionPercentage}%\n\n`;
   
-  if (contextType === "all" || contextType === "personal") {
-    result += `## 👤 Personal Information\n`;
-    if (context.personal && Object.keys(context.personal).length > 0) {
-      if (context.personal.name) result += `- **Name:** ${context.personal.name}\n`;
-      if (context.personal.email) result += `- **Email:** ${context.personal.email}\n`;
-      if (context.personal.role) result += `- **Position:** ${context.personal.role}\n`;
-      if (context.personal.salesforce_usage) result += `- **Salesforce Usage:** ${context.personal.salesforce_usage}\n`;
-    } else {
-      result += `*No personal information stored*\n`;
-    }
-    result += `\n`;
+  // Show specific section or all sections
+  const sectionsToShow = contextType === "all" ? allSections : 
+                        allSections.includes(contextType) ? [contextType] : [];
+  
+  if (sectionsToShow.length === 0 && contextType !== "all") {
+    result += `⚠️ **Section "${contextType}" not found**\n\n`;
+    result += `**Available sections:** ${allSections.join(', ')}\n\n`;
   }
   
-  if (contextType === "all" || contextType === "business") {
-    result += `## 🏢 Business Information\n`;
-    if (context.business && Object.keys(context.business).length > 0) {
-      if (context.business.company_name) result += `- **Company:** ${context.business.company_name}\n`;
-      if (context.business.industry) result += `- **Industry:** ${context.business.industry}\n`;
-      if (context.business.business_focus) result += `- **Business Focus:** ${context.business.business_focus}\n`;
-      if (context.business.primary_processes) result += `- **Primary Processes:** ${context.business.primary_processes}\n`;
-    } else {
-      result += `*No business information stored*\n`;
-    }
-    result += `\n`;
-  }
-  
-  if (contextType === "all" || contextType === "data_model") {
-    result += `## 🗃️ Data Model Context\n`;
-    if (context.data_model && Object.keys(context.data_model).length > 0) {
-      for (const [key, value] of Object.entries(context.data_model)) {
-        const formattedKey = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-        result += `- **${formattedKey}:** ${value}\n`;
+  // Display each section
+  for (const sectionName of sectionsToShow) {
+    const sectionData = context[sectionName];
+    if (!sectionData || Object.keys(sectionData).length === 0) continue;
+    
+    // Create section header with appropriate emoji
+    const emoji = getSectionEmoji(sectionName);
+    const title = sectionName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    result += `## ${emoji} ${title}\n`;
+    
+    // Handle special formatting for known sections
+    if (sectionName === 'personal') {
+      const standardFields = ['name', 'email', 'role', 'salesforce_usage'];
+      for (const field of standardFields) {
+        if (sectionData[field]) {
+          const label = field === 'role' ? 'Position' : 
+                       field === 'salesforce_usage' ? 'Salesforce Usage' :
+                       field.charAt(0).toUpperCase() + field.slice(1);
+          result += `- **${label}:** ${sectionData[field]}\n`;
+        }
+      }
+      
+      // Display dynamic fields
+      const dynamicFields = Object.keys(sectionData).filter(key => !standardFields.includes(key));
+      for (const field of dynamicFields) {
+        const label = field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        result += `- **${label}:** ${sectionData[field]}\n`;
+      }
+    } else if (sectionName === 'business') {
+      const standardFields = ['company_name', 'industry', 'business_focus', 'primary_processes'];
+      for (const field of standardFields) {
+        if (sectionData[field]) {
+          const label = field === 'company_name' ? 'Company' :
+                       field === 'business_focus' ? 'Business Focus' :
+                       field === 'primary_processes' ? 'Primary Processes' :
+                       field.charAt(0).toUpperCase() + field.slice(1);
+          result += `- **${label}:** ${sectionData[field]}\n`;
+        }
+      }
+      
+      // Display dynamic fields
+      const dynamicFields = Object.keys(sectionData).filter(key => !standardFields.includes(key));
+      for (const field of dynamicFields) {
+        const label = field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        result += `- **${label}:** ${sectionData[field]}\n`;
       }
     } else {
-      result += `*No data model information stored*\n`;
+      // For all other sections (including data_model and custom sections), show all fields
+      for (const [key, value] of Object.entries(sectionData)) {
+        const formattedKey = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        const displayValue = typeof value === 'string' && value.length > 200 ? 
+                           value.substring(0, 200) + '...' : value;
+        result += `- **${formattedKey}:** ${displayValue}\n`;
+      }
     }
     result += `\n`;
   }
@@ -458,6 +508,7 @@ async function showStoredContext(contextType) {
     result += `- **Integration systems:** \`question_id: "integration_systems"\`\n`;
     result += `- **Reporting needs:** \`question_id: "reporting_needs"\`\n`;
   }
+  result += `- **Store dynamic learning:** \`action: "store_learning"\` (AI can store any key-value information in any section)\n`;
   result += `- **Reset context:** \`action: "reset_context"\`\n`;
   
   return {
@@ -466,6 +517,41 @@ async function showStoredContext(contextType) {
       text: result
     }]
   };
+}
+
+// Helper function to get appropriate emoji for sections
+function getSectionEmoji(sectionName) {
+  const emojiMap = {
+    'personal': '👤',
+    'business': '🏢', 
+    'data_model': '🗃️',
+    'technical_preferences': '⚙️',
+    'workflow_patterns': '🔄',
+    'integration_systems': '🔗',
+    'security_settings': '🔒',
+    'reporting_needs': '📊',
+    'user_preferences': '⚡',
+    'automation_rules': '🤖',
+    'custom_processes': '📋',
+    'system_configuration': '🔧',
+    'aha_moments': '💡',
+    'insights': '🌟',
+    'breakthrough_insights': '💡',
+    'pain_points': '😤',
+    'frustrations': '😤',
+    'challenges': '⚠️',
+    'success_patterns': '✅',
+    'wins': '🏆',
+    'discoveries': '🔍',
+    'realizations': '💭',
+    'key_learnings': '📝',
+    'workflow_insights': '🔄',
+    'technical_discoveries': '🔬',
+    'process_improvements': '📈',
+    'optimization_opportunities': '⚡'
+  };
+  
+  return emojiMap[sectionName] || '📁';
 }
 
 async function suggestIntelligentQuestions(contextType) {
@@ -838,16 +924,30 @@ async function handleAdditionalQuestion(questionId, answer, context) {
     };
   }
   
-  // Handle dynamic questions from suggest_questions
-  // Check if this looks like a question ID from suggest_questions
-  if (questionId.includes('_')) {
-    const [category, ...rest] = questionId.split('_');
-    const contextField = questionId.replace(/\d+$/, ''); // Remove trailing numbers
+  // Handle dynamic questions from suggest_questions or AI-generated questions
+  // Check if this looks like a question ID from suggest_questions or is a completely new key
+  if (questionId.includes('_') || !additionalQuestions[questionId]) {
+    // Determine the section and key
+    let targetSection = 'data_model';
+    let contextField = questionId;
     
-    // Store in appropriate context section
-    const targetSection = category === 'data' ? 'data_model' : 
-                         category === 'business' ? 'business' : 
-                         category === 'personal' ? 'personal' : 'data_model';
+    // Parse section from question ID if available
+    if (questionId.includes('_')) {
+      const [category, ...rest] = questionId.split('_');
+      if (['personal', 'business', 'data'].includes(category)) {
+        targetSection = category === 'data' ? 'data_model' : category;
+        contextField = rest.join('_');
+      }
+    }
+    
+    // For completely unknown question IDs, try to infer meaning
+    if (!contextField || contextField === questionId) {
+      // Use the full question ID as the field name, cleaned up
+      contextField = questionId.replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase();
+    }
+    
+    // Remove trailing numbers that might be from suggest_questions
+    contextField = contextField.replace(/\d+$/, '');
     
     if (!context[targetSection]) context[targetSection] = {};
     context[targetSection][contextField] = answer;
@@ -855,11 +955,12 @@ async function handleAdditionalQuestion(questionId, answer, context) {
     // Add to answered questions
     context.interview.answered_questions.push({
       id: questionId,
-      category: category,
-      question: `Additional question: ${questionId}`,
+      category: targetSection,
+      question: `Dynamic question: ${questionId}`,
       type: 'dynamic',
       answer: answer,
-      answered_at: new Date().toISOString()
+      answered_at: new Date().toISOString(),
+      context_field: contextField
     });
     
     await saveContext(context);
@@ -867,10 +968,11 @@ async function handleAdditionalQuestion(questionId, answer, context) {
     return {
       content: [{
         type: "text",
-        text: `✅ **Answer saved!**\n\n` +
+        text: `✅ **Dynamic answer saved!**\n\n` +
               `**Question ID:** ${questionId}\n` +
+              `**Stored in:** ${targetSection}.${contextField}\n` +
               `**Your answer:** ${answer}\n\n` +
-              `This information has been added to your context.\n\n` +
+              `🧠 **This learning has been added to your context and will be remembered across sessions.**\n\n` +
               `💡 Use \`show_context\` to see all stored information.`
       }]
     };
@@ -886,6 +988,104 @@ async function handleAdditionalQuestion(questionId, answer, context) {
               `- **${qDef.category.replace('_', ' ')}:** \`${qId}\` - ${qDef.question.substring(0, 80)}...`
             ).join('\n') + '\n\n' +
             `💡 **Or use \`suggest_questions\` for intelligent questions based on your Salesforce data.**`
+    }]
+  };
+}
+
+async function storeDynamicLearning({ section, key, value, overwrite = false }) {
+  if (!section || !key || !value) {
+    return {
+      content: [{
+        type: "text",
+        text: `❌ **Missing required parameters for store_learning**\n\n` +
+              `Required: section, key, value\n` +
+              `- **section:** any descriptive name (e.g., 'personal', 'business', 'technical_preferences', 'workflow_patterns')\n` +
+              `- **key:** descriptive name (e.g., 'preferred_communication_style')\n` +
+              `- **value:** the information to store\n` +
+              `- **overwrite:** true/false (optional, default: false)`
+      }]
+    };
+  }
+
+  // Clean section name: convert to lowercase, replace spaces with underscores, remove special chars
+  const cleanSection = section.toLowerCase()
+    .replace(/[^a-z0-9_]/g, '_')
+    .replace(/_{2,}/g, '_')
+    .replace(/^_+|_+$/g, ''); // Remove leading/trailing underscores
+  
+  const context = await loadContext();
+  
+  // Ensure section exists - create dynamically if needed
+  if (!context[cleanSection]) {
+    context[cleanSection] = {};
+  }
+
+  // Check if key already exists and handle overwrite logic
+  const keyExists = context[cleanSection].hasOwnProperty(key);
+  if (keyExists && !overwrite) {
+    return {
+      content: [{
+        type: "text",
+        text: `⚠️ **Key already exists:** \`${key}\` in \`${cleanSection}\`\n\n` +
+              `**Current value:** ${context[cleanSection][key]}\n` +
+              `**New value:** ${value}\n\n` +
+              `Use \`overwrite: true\` to replace the existing value, or choose a different key name.`
+      }]
+    };
+  }
+
+  const previousValue = keyExists ? context[cleanSection][key] : null;
+  
+  // Store the learning
+  context[cleanSection][key] = value;
+  context.updated_at = new Date().toISOString();
+  
+  // Track the learning in the interview history for transparency
+  if (!context.interview) {
+    context.interview = {
+      status: "completed",
+      started_at: new Date().toISOString(),
+      completed_at: new Date().toISOString(),
+      pending_questions: [],
+      answered_questions: []
+    };
+  }
+  
+  if (!context.interview.answered_questions) {
+    context.interview.answered_questions = [];
+  }
+  
+  context.interview.answered_questions.push({
+    id: `dynamic_learning_${Date.now()}`,
+    category: cleanSection,
+    question: `Dynamic learning: ${key}`,
+    type: 'dynamic_learning',
+    answer: value,
+    answered_at: new Date().toISOString(),
+    learning_key: key,
+    overwritten: keyExists,
+    previous_value: previousValue
+  });
+
+  await saveContext(context);
+
+  let result = `✅ **Learning stored successfully!**\n\n`;
+  result += `**Section:** ${cleanSection}${cleanSection !== section ? ` (cleaned from "${section}")` : ''}\n`;
+  result += `**Key:** ${key}\n`;
+  result += `**Value:** ${value}\n\n`;
+  
+  if (keyExists) {
+    result += `📝 **Note:** This ${overwrite ? 'replaced' : 'overwrote'} the previous value:\n`;
+    result += `*Previous:* ${previousValue}\n\n`;
+  }
+  
+  result += `🧠 **AI Context Enhanced:** This information will be remembered across all future sessions.\n\n`;
+  result += `**Quick access:** Use \`show_context\` with \`context_type: "${cleanSection}"\` to see all ${cleanSection} information.`;
+
+  return {
+    content: [{
+      type: "text",
+      text: result
     }]
   };
 }

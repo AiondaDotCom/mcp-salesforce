@@ -4,12 +4,14 @@ A **Model Context Protocol (MCP) server** that provides seamless integration wit
 
 ## ✨ Features
 
-- **OAuth-Only Authentication** - Secure browser-based setup with automatic token refresh
-- **Universal Salesforce Integration** - Works with any Salesforce org, including custom objects and fields  
-- **Dynamic Schema Discovery** - Automatically adapts to your Salesforce configuration
-- **Secure Token Storage** - Uses macOS Keychain for production-grade security
-- **Full CRUD Operations** - Query, create, update, and delete any Salesforce records
-- **Schema Inspection** - Get detailed information about objects and fields
+- **🎯 Seamless Authentication** - Claude automatically detects when authentication is needed and handles it transparently
+- **🚀 Zero Manual Setup** - No need to run terminal commands or manual OAuth flows
+- **🔐 OAuth-Only Authentication** - Secure browser-based setup with automatic token refresh
+- **🌐 Universal Salesforce Integration** - Works with any Salesforce org, including custom objects and fields  
+- **🔍 Dynamic Schema Discovery** - Automatically adapts to your Salesforce configuration
+- **🔒 Secure Token Storage** - Uses macOS Keychain for production-grade security
+- **📝 Full CRUD Operations** - Query, create, update, and delete any Salesforce records
+- **📊 Schema Inspection** - Get detailed information about objects and fields
 
 ## 🚀 Quick Start
 
@@ -28,31 +30,21 @@ A **Model Context Protocol (MCP) server** that provides seamless integration wit
    npm install
    ```
 
-2. **Check current status**:
-   ```bash
-   npm run status
-   ```
-
-3. **Get Salesforce Connected App configuration help**:
-   ```bash
-   npm run config-help
-   ```
-   This will show you exactly which callback URLs to add to your Connected App.
-
-4. **Configure your Connected App** (see output from step 3)
-
-5. **Configure environment variables**:
+2. **Configure environment variables**:
    ```bash
    cp .env.example .env
    # Edit .env with your Salesforce Connected App details
    ```
 
-3. **Run setup to authenticate**:
-   ```bash
-   npm run setup
-   ```
+3. **Add to Claude Desktop** (see [Configuration](#configuration) below)
 
-4. **Add to Claude Desktop** (see [Configuration](#configuration) below)
+4. **🎯 Start Using**: That's it! Claude will automatically handle authentication when you first use any Salesforce tool.
+
+**✨ No More Manual Setup!** 
+- No need to run `npm run setup`
+- No terminal authentication required
+- Claude automatically detects when authentication is needed
+- Seamless OAuth flow directly from Claude Desktop
 
 ## 📸 Demo Screenshots
 
@@ -192,11 +184,11 @@ Get schema information for objects and fields.
 {} // Empty parameters
 ```
 
-### `salesforce_reauth`
-Re-authenticate with Salesforce when tokens expire or become invalid.
+### `salesforce_auth`
+Authenticate with Salesforce. Automatically detects if authentication is needed and handles OAuth flow.
 
 ```javascript
-// Example: Standard re-authentication
+// Example: Standard authentication (detects if needed)
 {}
 
 // Example: Force re-authentication even if tokens appear valid
@@ -205,11 +197,17 @@ Re-authenticate with Salesforce when tokens expire or become invalid.
 }
 ```
 
-This tool is especially useful when:
-- You get authentication errors in Claude Desktop
-- Tokens have expired and auto-refresh failed
-- You need to switch to a different Salesforce user
-- You want to ensure fresh authentication
+**✨ Key Features:**
+- **Automatic Detection**: Claude automatically suggests this tool when authentication is needed
+- **No Manual Setup**: Eliminates the need to run `npm run setup` manually  
+- **Smart Authentication**: Only authenticates when necessary, checks existing tokens first
+- **Seamless Integration**: Works transparently in the background
+
+This tool is **automatically suggested** when:
+- You try to use Salesforce tools without authentication
+- Your tokens have expired
+- Authentication errors occur
+- First-time setup is needed
 
 ## 💡 Usage Examples
 
@@ -276,17 +274,22 @@ npm run setup -- --validate
 
 ### Authentication Issues
 
-1. **"No tokens found"**: Run `npm run setup` to authenticate or use the `salesforce_reauth` tool in Claude Desktop
-2. **"Invalid client credentials"**: Check your Client ID and Secret in MCP configuration
-3. **"Token refresh failed"**: Use the `salesforce_reauth` tool to get fresh tokens
-4. **"Access token expired"**: Use `salesforce_reauth` tool - much faster than terminal setup!
+**🎯 Automatic Authentication**: Claude automatically detects authentication issues and suggests the `salesforce_auth` tool. No manual troubleshooting needed!
+
+**Common Scenarios:**
+1. **First-time use**: Claude will automatically suggest authentication when you first try to use Salesforce tools
+2. **Token expiration**: When tokens expire, Claude detects this and prompts for re-authentication  
+3. **Invalid credentials**: Clear error messages guide you to fix configuration issues
+4. **Session expired**: Automatic detection with friendly prompts to re-authenticate
 
 ### Quick Fix in Claude Desktop
-If you get authentication errors, simply run:
+If you get authentication errors, simply tell Claude:
 ```
-Use the salesforce_reauth tool to refresh my Salesforce authentication
+Authenticate with Salesforce
 ```
-This will start a new OAuth flow directly from Claude Desktop without needing the terminal.
+Or Claude will automatically suggest: `Use the salesforce_auth tool to authenticate with Salesforce`
+
+**✨ No more manual terminal setup!** Everything happens seamlessly through Claude Desktop.
 
 ### Connection Issues
 

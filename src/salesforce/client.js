@@ -23,7 +23,7 @@ export class SalesforceClient {
       // Initialize token manager
       const hasTokens = await this.tokenManager.initialize();
       if (!hasTokens) {
-        throw new Error('No authentication tokens found. Please run setup first.');
+        throw new Error('Authentication required - no valid tokens found. Use the salesforce_auth tool to authenticate with Salesforce.');
       }
 
       // Create jsforce connection
@@ -92,6 +92,11 @@ export class SalesforceClient {
         nextRecordsUrl: result.nextRecordsUrl
       };
     } catch (error) {
+      // Handle authentication errors first
+      if (this.isAuthenticationError(error)) {
+        throw new Error('Authentication required - your Salesforce session has expired. Use the salesforce_auth tool to re-authenticate.');
+      }
+
       // Handle specific Salesforce errors
       if (error.name === 'INVALID_QUERY' || error.errorCode === 'INVALID_QUERY') {
         throw new Error(`Invalid SOQL query: ${error.message}`);
@@ -149,6 +154,9 @@ export class SalesforceClient {
         throw new Error(`Create failed: ${JSON.stringify(result.errors)}`);
       }
     } catch (error) {
+      if (this.isAuthenticationError(error)) {
+        throw new Error('Authentication required - your Salesforce session has expired. Use the salesforce_auth tool to re-authenticate.');
+      }
       throw new Error(`Create ${sobject} failed: ${this.formatSalesforceError(error)}`);
     }
   }
@@ -176,6 +184,9 @@ export class SalesforceClient {
         throw new Error(`Update failed: ${JSON.stringify(result.errors)}`);
       }
     } catch (error) {
+      if (this.isAuthenticationError(error)) {
+        throw new Error('Authentication required - your Salesforce session has expired. Use the salesforce_auth tool to re-authenticate.');
+      }
       throw new Error(`Update ${sobject} failed: ${this.formatSalesforceError(error)}`);
     }
   }
@@ -199,6 +210,9 @@ export class SalesforceClient {
         throw new Error(`Delete failed: ${JSON.stringify(result.errors)}`);
       }
     } catch (error) {
+      if (this.isAuthenticationError(error)) {
+        throw new Error('Authentication required - your Salesforce session has expired. Use the salesforce_auth tool to re-authenticate.');
+      }
       throw new Error(`Delete ${sobject} failed: ${this.formatSalesforceError(error)}`);
     }
   }
@@ -236,6 +250,9 @@ export class SalesforceClient {
         recordTypeInfos: result.recordTypeInfos || []
       };
     } catch (error) {
+      if (this.isAuthenticationError(error)) {
+        throw new Error('Authentication required - your Salesforce session has expired. Use the salesforce_auth tool to re-authenticate.');
+      }
       throw new Error(`Describe ${sobject} failed: ${this.formatSalesforceError(error)}`);
     }
   }
@@ -266,6 +283,9 @@ export class SalesforceClient {
 
       return sobjects;
     } catch (error) {
+      if (this.isAuthenticationError(error)) {
+        throw new Error('Authentication required - your Salesforce session has expired. Use the salesforce_auth tool to re-authenticate.');
+      }
       throw new Error(`Global describe failed: ${this.formatSalesforceError(error)}`);
     }
   }
@@ -312,6 +332,33 @@ export class SalesforceClient {
     }
     
     return error.message || 'Unknown Salesforce error';
+  }
+
+  /**
+   * Check if an error is authentication-related
+   */
+  isAuthenticationError(error) {
+    const authErrorIndicators = [
+      'INVALID_SESSION_ID',
+      'Session expired',
+      'invalid_grant',
+      'Authentication failure',
+      'Unauthorized',
+      'Invalid token',
+      'Token expired',
+      'Not authenticated',
+      'Authentication required',
+      'No access token available',
+      'refresh token is invalid',
+      'Session has expired'
+    ];
+
+    const errorMessage = error.message || '';
+    const errorString = error.toString() || '';
+    
+    return authErrorIndicators.some(indicator => 
+      errorMessage.includes(indicator) || errorString.includes(indicator)
+    );
   }
 
   /**

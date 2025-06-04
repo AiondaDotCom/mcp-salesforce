@@ -77,20 +77,37 @@ class MCPSalesforceServer {
           case 'salesforce_describe':
             return await executeDescribe(this.salesforceClient, args);
           
-          case 'salesforce_reauth':
-            // Special case: reauth doesn't need existing client
-            return await this.handleReauth(args);
+          case 'salesforce_auth':
+            // Special case: auth doesn't need existing client
+            return await this.handleAuth(args);
           
           default:
             throw new Error(`Unknown tool: ${name}`);
         }
       } catch (error) {
+        // Check if this is an authentication-related error
+        const isAuthError = this.isAuthenticationError(error);
+        
+        if (isAuthError) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: `🔐 **Authentication Required**\n\n` +
+                      `${error.message}\n\n` +
+                      `**Solution:** Use the \`salesforce_auth\` tool to authenticate with Salesforce. This will automatically handle the OAuth flow and store your tokens securely.\n\n` +
+                      `Simply call: \`salesforce_auth\` and I'll handle the rest!`
+              }
+            ],
+            isError: true
+          };
+        }
+
         return {
           content: [
             {
               type: "text",
-              text: `❌ Error executing ${name}: ${error.message}\n\n` +
-                    `If this is an authentication error, try running: npm run setup`
+              text: `❌ Error executing ${name}: ${error.message}`
             }
           ],
           isError: true
@@ -122,11 +139,11 @@ class MCPSalesforceServer {
     await this.salesforceClient.initialize();
   }
 
-  async handleReauth(args) {
+  async handleAuth(args) {
     try {
       const result = await handleReauth(args);
       
-      // Reset client after successful reauth to force reconnection
+      // Reset client after successful auth to force reconnection
       if (result.success) {
         this.salesforceClient = null;
       }
@@ -153,6 +170,33 @@ class MCPSalesforceServer {
         isError: true
       };
     }
+  }
+
+  /**
+   * Detect if an error is authentication-related
+   */
+  isAuthenticationError(error) {
+    const authErrorIndicators = [
+      'INVALID_SESSION_ID',
+      'Session expired',
+      'invalid_grant',
+      'Authentication failure',
+      'Unauthorized',
+      'Invalid token',
+      'Token expired',
+      'Not authenticated',
+      'Authentication required',
+      'No access token available',
+      'refresh token is invalid',
+      'Session has expired'
+    ];
+
+    const errorMessage = error.message || '';
+    const errorString = error.toString() || '';
+    
+    return authErrorIndicators.some(indicator => 
+      errorMessage.includes(indicator) || errorString.includes(indicator)
+    );
   }
 
   async run() {

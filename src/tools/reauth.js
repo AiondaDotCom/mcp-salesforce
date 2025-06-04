@@ -1,8 +1,8 @@
 import { TokenManager } from '../auth/token-manager.js';
 
 export const reauth = {
-  name: 'salesforce_reauth',
-  description: 'Re-authenticate with Salesforce when tokens expire or become invalid. This starts a new OAuth flow to get fresh tokens.',
+  name: 'salesforce_auth',
+  description: 'Authenticate with Salesforce. Automatically detects if authentication is needed and handles OAuth flow. Call this tool if any Salesforce operations fail due to authentication issues.',
   inputSchema: {
     type: 'object',
     properties: {
@@ -84,7 +84,7 @@ export async function handleReauth(args) {
 
     return {
       success: true,
-      message: 'Successfully re-authenticated with Salesforce! New tokens have been stored securely.',
+      message: 'Successfully authenticated with Salesforce! New tokens have been stored securely.',
       authenticationFlow: 'OAuth completed successfully',
       tokenInfo: {
         authenticated: true,
@@ -147,7 +147,7 @@ export async function handleReauth(args) {
 
     return {
       success: false,
-      error: `Re-authentication failed: ${error.message}`,
+      error: `Authentication failed: ${error.message}`,
       details: {
         errorType: error.constructor.name,
         troubleshooting: [

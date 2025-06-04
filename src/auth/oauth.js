@@ -3,6 +3,20 @@ import { createServer } from 'http';
 import open from 'open';
 import crypto from 'crypto';
 
+// Ensure fetch is available - use built-in fetch (Node.js 18+) or import node-fetch
+const getFetch = async () => {
+  if (typeof globalThis.fetch !== 'undefined') {
+    return globalThis.fetch;
+  }
+  
+  try {
+    const { default: nodeFetch } = await import('node-fetch');
+    return nodeFetch;
+  } catch (error) {
+    throw new Error('fetch is not available. Please use Node.js 18+ or install node-fetch package.');
+  }
+};
+
 export class OAuthFlow {
   constructor(clientId, clientSecret, instanceUrl, callbackPort = null) {
     this.clientId = clientId;
@@ -48,6 +62,7 @@ export class OAuthFlow {
    * Exchange authorization code for tokens
    */
   async exchangeCodeForTokens(code) {
+    const fetch = await getFetch();
     const tokenUrl = `${this.instanceUrl}/services/oauth2/token`;
     
     const params = new URLSearchParams({
@@ -224,6 +239,7 @@ export class OAuthFlow {
    * Refresh access token using refresh token
    */
   async refreshAccessToken(refreshToken) {
+    const fetch = await getFetch();
     const tokenUrl = `${this.instanceUrl}/services/oauth2/token`;
     
     const params = new URLSearchParams({

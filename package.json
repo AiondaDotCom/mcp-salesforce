@@ -33,6 +33,7 @@
     "express": "^4.18.2",
     "jsforce": "^1.11.1",
     "keychain": "^1.5.0",
+    "node-fetch": "^3.3.2",
     "open": "^8.4.2"
   },
   "devDependencies": {

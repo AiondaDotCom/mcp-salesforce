@@ -6,6 +6,7 @@
  */
 
 import { getInstallationDocumentation, hasInstallationDocumentation } from './learn.js';
+import { logger } from '../utils/debug.js';
 
 export const salesforceInstallationInfoTool = {
   name: "salesforce_installation_info",
@@ -74,7 +75,7 @@ export async function handleSalesforceInstallationInfo(args) {
     return handleGeneralOverview(documentation, show_custom_only, include_relationships);
     
   } catch (error) {
-    console.error('❌ Error retrieving installation info:', error);
+    logger.error('❌ Error retrieving installation info:', error);
     return {
       content: [{
         type: "text",

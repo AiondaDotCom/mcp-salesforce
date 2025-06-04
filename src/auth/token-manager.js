@@ -1,5 +1,6 @@
 import { FileStorageManager } from './file-storage.js';
 import { OAuthFlow } from './oauth.js';
+import { logger } from '../utils/debug.js';
 
 // Ensure fetch is available - use built-in fetch (Node.js 18+) or import node-fetch
 const getFetch = async () => {
@@ -32,7 +33,7 @@ export class TokenManager {
     try {
       this.currentTokens = await this.storage.getTokens();
       if (this.currentTokens) {
-        
+        logger.log('📋 Existing tokens loaded from storage');
         // Check if tokens need refresh
         if (await this.needsRefresh()) {
           await this.refreshTokens();
@@ -115,9 +116,10 @@ export class TokenManager {
 
       // Store updated tokens in file storage
       await this.storage.storeTokens(this.currentTokens);
+      logger.log('🔄 Tokens refreshed successfully');
       
     } catch (error) {
-      
+      logger.error('❌ Token refresh failed:', error.message);
       // If refresh fails, clear tokens and require re-authentication
       await this.clearTokens();
       throw new Error(`Token refresh failed: ${error.message}. Please run setup again.`);
@@ -129,21 +131,21 @@ export class TokenManager {
    */
   async authenticateWithOAuth() {
     try {
-      console.log('🚀 Starting enhanced OAuth authentication...');
+      logger.log('🚀 Starting enhanced OAuth authentication...');
       const oauth = new OAuthFlow(this.clientId, this.clientSecret, this.instanceUrl);
       
       // Use the enhanced authentication with retry logic
       const tokens = await oauth.authenticateWithRetry();
       
-      console.log('💾 Storing tokens securely...');
+      logger.log('💾 Storing tokens securely...');
       // Store tokens securely
       await this.storage.storeTokens(tokens);
       this.currentTokens = tokens;
       
-      console.log('✅ OAuth authentication completed successfully');
+      logger.log('✅ OAuth authentication completed successfully');
       return tokens;
     } catch (error) {
-      console.error('❌ OAuth authentication failed:', error.message);
+      logger.error('❌ OAuth authentication failed:', error.message);
       throw error;
     }
   }

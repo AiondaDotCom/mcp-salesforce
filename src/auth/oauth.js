@@ -2,6 +2,7 @@ import express from 'express';
 import { createServer } from 'http';
 import open from 'open';
 import crypto from 'crypto';
+import { logger } from '../utils/debug.js';
 
 // Ensure fetch is available - use built-in fetch (Node.js 18+) or import node-fetch
 const getFetch = async () => {
@@ -68,12 +69,12 @@ export class OAuthFlow {
    */
   isValidState(receivedState) {
     if (Date.now() > this.stateExpiration) {
-      console.log('⏰ OAuth state expired');
+      logger.log('⏰ OAuth state expired');
       return { valid: false, reason: 'State expired - authentication session timed out (10 minutes). Please start a new authentication.' };
     }
 
     if (receivedState !== this.state) {
-      console.log('🚨 OAuth state mismatch:', {
+      logger.log('🚨 OAuth state mismatch:', {
         received: receivedState?.substring(0, 16) + '...',
         expected: this.state?.substring(0, 16) + '...'
       });
@@ -145,7 +146,7 @@ export class OAuthFlow {
         try {
           const { code, state, error } = req.query;
 
-          console.log('📥 OAuth callback received:', {
+          logger.log('📥 OAuth callback received:', {
             hasCode: !!code,
             hasState: !!state,
             hasError: !!error,
@@ -156,7 +157,7 @@ export class OAuthFlow {
 
           if (error) {
             const errorMsg = `OAuth error: ${error}`;
-            console.error('❌ OAuth error received:', errorMsg);
+            logger.error('❌ OAuth error received:', errorMsg);
             res.status(400).send(`<h1>Authentication Failed</h1><p>${errorMsg}</p>`);
             if (!resolved) {
               resolved = true;
@@ -170,7 +171,7 @@ export class OAuthFlow {
             const validation = this.isValidState(state);
             const errorMsg = validation.reason;
             
-            console.error('🚨 CSRF protection triggered:', {
+            logger.error('🚨 CSRF protection triggered:', {
               receivedState: state,
               expectedState: this.state,
               receivedLength: state?.length,
@@ -295,9 +296,10 @@ export class OAuthFlow {
       
       // Open browser for authentication
       const authUrl = this.getAuthorizationUrl();
+      logger.log(`🌐 Opening browser for authentication: ${authUrl}`);
       
       open(authUrl).catch(error => {
-        // Browser failed to open - user will need to visit URL manually
+        logger.warn('⚠️ Failed to open browser automatically:', error.message);
       });
     });
   }
@@ -354,21 +356,21 @@ export class OAuthFlow {
   async authenticateWithRetry() {
     for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
       try {
-        console.log(`🔄 Authentication attempt ${attempt}/${this.maxRetries}`);
+        logger.log(`🔄 Authentication attempt ${attempt}/${this.maxRetries}`);
         
         // Reset state and expiration for each attempt to avoid CSRF issues
         this.state = crypto.randomBytes(32).toString('hex');
         this.stateExpiration = Date.now() + (10 * 60 * 1000);
         
-        console.log(`   📝 New state generated: ${this.state.substring(0, 16)}...`);
-        console.log(`   ⏰ Expires at: ${new Date(this.stateExpiration).toISOString()}`);
+        logger.log(`   📝 New state generated: ${this.state.substring(0, 16)}...`);
+        logger.log(`   ⏰ Expires at: ${new Date(this.stateExpiration).toISOString()}`);
         
         const tokens = await this.startFlow();
-        console.log('✅ Authentication successful');
+        logger.log('✅ Authentication successful');
         return tokens;
         
       } catch (error) {
-        console.log(`❌ Attempt ${attempt} failed:`, error.message);
+        logger.log(`❌ Attempt ${attempt} failed:`, error.message);
         
         if (attempt === this.maxRetries) {
           throw new Error(`Authentication failed after ${this.maxRetries} attempts: ${error.message}`);
@@ -376,7 +378,7 @@ export class OAuthFlow {
         
         // Wait before retry (exponential backoff)
         const waitTime = 1000 * Math.pow(2, attempt - 1);
-        console.log(`   ⏳ Waiting ${waitTime}ms before retry...`);
+        logger.log(`   ⏳ Waiting ${waitTime}ms before retry...`);
         await new Promise(resolve => setTimeout(resolve, waitTime));
       }
     }

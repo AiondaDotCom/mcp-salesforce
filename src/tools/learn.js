@@ -9,6 +9,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { logger } from '../utils/debug.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -67,12 +68,12 @@ export async function handleSalesforceLearn(args, salesforceClient) {
     }
 
     // Start learning process
-    console.log('🔍 Starting Salesforce installation learning process...');
+    logger.log('🔍 Starting Salesforce installation learning process...');
     
     // Step 1: Get all available objects
     const globalDescribe = await salesforceClient.describeGlobal();
     
-    console.log(`📋 Found: ${globalDescribe.length} objects`);
+    logger.log(`📋 Found: ${globalDescribe.length} objects`);
     
     // Step 2: Filter and categorize objects
     const standardObjects = [];
@@ -87,7 +88,7 @@ export async function handleSalesforceLearn(args, salesforceClient) {
       }
     }
     
-    console.log(`📊 Standard objects: ${standardObjects.length}, Custom objects: ${customObjects.length}`);
+    logger.log(`📊 Standard objects: ${standardObjects.length}, Custom objects: ${customObjects.length}`);
     
     // Step 3: Detailed analysis of selected objects
     const documentation = {
@@ -113,7 +114,7 @@ export async function handleSalesforceLearn(args, salesforceClient) {
     
     for (let i = 0; i < objectsToAnalyze.length; i += batchSize) {
       const batch = objectsToAnalyze.slice(i, i + batchSize);
-      console.log(`🔬 Analyzing batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(objectsToAnalyze.length/batchSize)} (${batch.length} objects)`);
+      logger.log(`🔬 Analyzing batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(objectsToAnalyze.length/batchSize)} (${batch.length} objects)`);
       
       await Promise.all(batch.map(async (obj) => {
         try {
@@ -122,7 +123,7 @@ export async function handleSalesforceLearn(args, salesforceClient) {
           documentation.summary.total_fields += objectDoc.field_count;
           documentation.summary.custom_fields += objectDoc.custom_field_count;
         } catch (error) {
-          console.warn(`⚠️ Error analyzing ${obj.name}:`, error.message);
+          logger.warn(`⚠️ Error analyzing ${obj.name}:`, error.message);
           documentation.objects[obj.name] = {
             error: `Analysis failed: ${error.message}`,
             basic_info: {
@@ -143,7 +144,7 @@ export async function handleSalesforceLearn(args, salesforceClient) {
     // Step 4: Save documentation
     await fs.writeFile(INSTALLATION_FILE, JSON.stringify(documentation, null, 2), 'utf8');
     
-    console.log('✅ Learning process completed');
+    logger.log('✅ Learning process completed');
     
     return {
       content: [{
@@ -164,7 +165,7 @@ export async function handleSalesforceLearn(args, salesforceClient) {
     };
     
   } catch (error) {
-    console.error('❌ Error during learning process:', error);
+    logger.error('❌ Error during learning process:', error);
     return {
       content: [{
         type: "text",

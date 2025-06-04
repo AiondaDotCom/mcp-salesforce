@@ -1,6 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { logger } from '../utils/debug.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -41,10 +42,10 @@ export class FileStorageManager {
       const stats = await fs.stat(this.tokenFilePath);
       const permissions = stats.mode & parseInt('777', 8);
       if (permissions !== parseInt('600', 8)) {
-        console.warn(`⚠️ Warning: Token file permissions are ${permissions.toString(8)}, expected 600`);
+        logger.warn(`⚠️ Warning: Token file permissions are ${permissions.toString(8)}, expected 600`);
       }
       
-      console.log('✅ Tokens stored securely in cache directory (permissions: 600)');
+      logger.log('✅ Tokens stored securely in cache directory (permissions: 600)');
     } catch (error) {
       throw new Error(`Failed to store tokens in file: ${error.message}`);
     }
@@ -61,7 +62,7 @@ export class FileStorageManager {
       
       // Validate token structure
       if (!tokenData.access_token || !tokenData.refresh_token) {
-        console.log('⚠️ Invalid token structure found, removing file');
+        logger.warn('⚠️ Invalid token structure found, removing file');
         await this.clearTokens();
         return null;
       }
@@ -82,7 +83,7 @@ export class FileStorageManager {
   async clearTokens() {
     try {
       await fs.unlink(this.tokenFilePath);
-      console.log('✅ Tokens cleared successfully');
+      logger.log('✅ Tokens cleared successfully');
     } catch (error) {
       if (error.code !== 'ENOENT') {
         throw new Error(`Failed to clear tokens: ${error.message}`);
@@ -147,7 +148,7 @@ export class FileStorageManager {
       const expectedPermissions = parseInt('600', 8);
 
       if (permissions !== expectedPermissions) {
-        console.log(`🔒 Fixing token file permissions from ${permissions.toString(8)} to 600`);
+        logger.log(`🔒 Fixing token file permissions from ${permissions.toString(8)} to 600`);
         await fs.chmod(this.tokenFilePath, 0o600);
         
         // Verify the change

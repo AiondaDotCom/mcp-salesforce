@@ -192,6 +192,25 @@ Get schema information for objects and fields.
 {} // Empty parameters
 ```
 
+### `salesforce_reauth`
+Re-authenticate with Salesforce when tokens expire or become invalid.
+
+```javascript
+// Example: Standard re-authentication
+{}
+
+// Example: Force re-authentication even if tokens appear valid
+{
+  "force": true
+}
+```
+
+This tool is especially useful when:
+- You get authentication errors in Claude Desktop
+- Tokens have expired and auto-refresh failed
+- You need to switch to a different Salesforce user
+- You want to ensure fresh authentication
+
 ## 💡 Usage Examples
 
 ### Query Examples
@@ -257,9 +276,17 @@ npm run setup -- --validate
 
 ### Authentication Issues
 
-1. **"No tokens found"**: Run `npm run setup` to authenticate
-2. **"Invalid client credentials"**: Check your Client ID and Secret
-3. **"Token refresh failed"**: Re-run setup to re-authenticate
+1. **"No tokens found"**: Run `npm run setup` to authenticate or use the `salesforce_reauth` tool in Claude Desktop
+2. **"Invalid client credentials"**: Check your Client ID and Secret in MCP configuration
+3. **"Token refresh failed"**: Use the `salesforce_reauth` tool to get fresh tokens
+4. **"Access token expired"**: Use `salesforce_reauth` tool - much faster than terminal setup!
+
+### Quick Fix in Claude Desktop
+If you get authentication errors, simply run:
+```
+Use the salesforce_reauth tool to refresh my Salesforce authentication
+```
+This will start a new OAuth flow directly from Claude Desktop without needing the terminal.
 
 ### Connection Issues
 

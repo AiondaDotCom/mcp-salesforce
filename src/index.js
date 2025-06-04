@@ -12,6 +12,7 @@ import { createTool, executeCreate } from './tools/create.js';
 import { updateTool, executeUpdate } from './tools/update.js';
 import { deleteTool, executeDelete } from './tools/delete.js';
 import { describeTool, executeDescribe } from './tools/describe.js';
+import { reauth, handleReauth } from './tools/reauth.js';
 
 // Load environment variables
 config();
@@ -43,7 +44,8 @@ class MCPSalesforceServer {
           createTool,
           updateTool,
           deleteTool,
-          describeTool
+          describeTool,
+          reauth
         ]
       };
     });
@@ -74,6 +76,10 @@ class MCPSalesforceServer {
           
           case 'salesforce_describe':
             return await executeDescribe(this.salesforceClient, args);
+          
+          case 'salesforce_reauth':
+            // Special case: reauth doesn't need existing client
+            return await this.handleReauth(args);
           
           default:
             throw new Error(`Unknown tool: ${name}`);
@@ -114,6 +120,39 @@ class MCPSalesforceServer {
     );
 
     await this.salesforceClient.initialize();
+  }
+
+  async handleReauth(args) {
+    try {
+      const result = await handleReauth(args);
+      
+      // Reset client after successful reauth to force reconnection
+      if (result.success) {
+        this.salesforceClient = null;
+      }
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: result.success 
+              ? `✅ ${result.message}\n\n${JSON.stringify(result.tokenInfo, null, 2)}`
+              : `❌ ${result.error}\n\n${JSON.stringify(result.details || {}, null, 2)}`
+          }
+        ],
+        isError: !result.success
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `❌ Re-authentication failed: ${error.message}`
+          }
+        ],
+        isError: true
+      };
+    }
   }
 
   async run() {

@@ -819,4 +819,305 @@ export class SalesforceBackupManager {
     
     return typeMap[contentType] || '.bin';
   }
+
+  /**
+   * Start an asynchronous backup that runs in the background
+   * Returns immediately with job information
+   */
+  async startAsyncBackup(backupType = 'incremental', sinceDate = null, options = {}) {
+    const jobManager = new BackupJobManager(options);
+    
+    const jobOptions = {
+      ...this.options,
+      backupType,
+      sinceDate,
+      ...options
+    };
+    
+    return await jobManager.startBackupJob(this.client, jobOptions);
+  }
+
+  /**
+   * Get status of all backup jobs
+   */
+  async getBackupJobStatuses() {
+    const jobManager = new BackupJobManager();
+    return await jobManager.getJobStatuses(this.options.outputDirectory);
+  }
+
+  /**
+   * Get status of a specific backup job
+   */
+  async getBackupJobStatus(jobId) {
+    const jobManager = new BackupJobManager();
+    return await jobManager.getJobStatus(jobId, this.options.outputDirectory);
+  }
+}
+
+/**
+ * Asynchronous Backup Job Manager
+ * Handles non-blocking backup operations with progress tracking
+ */
+export class BackupJobManager {
+  constructor(options = {}) {
+    this.cleanupDelay = options.testMode ? 100 : 5000; // Faster cleanup in test mode
+  }
+
+  /**
+   * Start an asynchronous backup job
+   * Returns immediately with job information
+   */
+  async startBackupJob(salesforceClient, options = {}) {
+    const jobId = this.generateJobId();
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const backupDir = path.join(options.outputDirectory || 'backups', `backup-${timestamp}`);
+    const lockFilePath = path.join(options.outputDirectory || 'backups', `${jobId}.lock`);
+
+    // Ensure output directory exists
+    await fs.mkdir(options.outputDirectory || 'backups', { recursive: true });
+
+    // Create initial lock file
+    const lockFile = {
+      jobId,
+      startTime: new Date().toISOString(),
+      status: 'starting',
+      message: 'Initializing backup job...',
+      progress: 0,
+      backupDirectory: backupDir,
+      options: {
+        backupType: options.backupType || 'incremental',
+        includeFiles: options.includeFiles !== false,
+        includeAttachments: options.includeAttachments !== false,
+        includeDocuments: options.includeDocuments !== false
+      },
+      pid: process.pid,
+      lastUpdated: new Date().toISOString()
+    };
+
+    await fs.writeFile(lockFilePath, JSON.stringify(lockFile, null, 2));
+
+    // Start background backup using setImmediate for non-blocking execution
+    setImmediate(() => {
+      this.runBackgroundBackup(salesforceClient, jobId, backupDir, lockFilePath, options)
+        .catch(async (error) => {
+          // Update lock file with error status
+          const errorLockFile = {
+            ...lockFile,
+            status: 'failed',
+            message: `Backup failed: ${error.message}`,
+            progress: 0,
+            error: error.message,
+            lastUpdated: new Date().toISOString(),
+            endTime: new Date().toISOString()
+          };
+          
+          try {
+            await fs.writeFile(lockFilePath, JSON.stringify(errorLockFile, null, 2));
+          } catch (writeError) {
+            logger.log(`Failed to update lock file: ${writeError.message}`);
+          }
+          
+          // Schedule cleanup
+          setTimeout(async () => {
+            try {
+              await fs.unlink(lockFilePath);
+            } catch (cleanupError) {
+              // Ignore cleanup errors
+            }
+          }, this.cleanupDelay);
+        });
+    });
+
+    return {
+      jobId,
+      status: 'started',
+      message: 'Backup job started successfully. Running in background.',
+      backupDirectory: backupDir,
+      lockFile: lockFilePath
+    };
+  }
+
+  /**
+   * Run the actual backup process in the background
+   */
+  async runBackgroundBackup(salesforceClient, jobId, backupDir, lockFilePath, options) {
+    try {
+      const backupManager = new SalesforceBackupManager(salesforceClient, {
+        outputDirectory: path.dirname(backupDir),
+        includeFiles: options.includeFiles !== false,
+        includeAttachments: options.includeAttachments !== false,
+        includeDocuments: options.includeDocuments !== false,
+        compression: options.compression || false,
+        parallelDownloads: options.parallelDownloads || 5,
+        objectsFilter: options.objectsFilter || []
+      });
+
+      // Update progress: Starting metadata backup
+      await this.updateLockFile(lockFilePath, {
+        status: 'running',
+        message: 'Backing up metadata...',
+        progress: 10
+      });
+
+      // Update progress: Starting data backup
+      await this.updateLockFile(lockFilePath, {
+        message: 'Backing up object data...',
+        progress: 40
+      });
+
+      // Update progress: Starting file downloads
+      await this.updateLockFile(lockFilePath, {
+        message: 'Downloading files...',
+        progress: 70
+      });
+
+      // Execute the actual backup
+      const result = await backupManager.createBackup(
+        options.backupType || 'incremental',
+        options.sinceDate
+      );
+
+      // Update progress: Finalizing
+      await this.updateLockFile(lockFilePath, {
+        message: 'Finalizing backup...',
+        progress: 90
+      });
+
+      // Complete the job
+      await this.updateLockFile(lockFilePath, {
+        status: 'completed',
+        message: 'Backup completed successfully!',
+        progress: 100,
+        endTime: new Date().toISOString(),
+        result: {
+          backupDirectory: result.backupDirectory,
+          duration: result.duration,
+          stats: result.stats
+        }
+      });
+
+      // Schedule cleanup of lock file
+      setTimeout(async () => {
+        try {
+          await fs.unlink(lockFilePath);
+        } catch (error) {
+          // Ignore cleanup errors
+        }
+      }, this.cleanupDelay);
+
+      return result;
+
+    } catch (error) {
+      // Update lock file with error
+      await this.updateLockFile(lockFilePath, {
+        status: 'failed',
+        message: `Backup failed: ${error.message}`,
+        progress: 0,
+        error: error.message,
+        endTime: new Date().toISOString()
+      });
+
+      // Schedule cleanup
+      setTimeout(async () => {
+        try {
+          await fs.unlink(lockFilePath);
+        } catch (cleanupError) {
+          // Ignore cleanup errors
+        }
+      }, this.cleanupDelay);
+
+      throw error;
+    }
+  }
+
+  /**
+   * Update lock file with new status information
+   */
+  async updateLockFile(lockFilePath, updates) {
+    try {
+      const currentData = JSON.parse(await fs.readFile(lockFilePath, 'utf8'));
+      const updatedData = {
+        ...currentData,
+        ...updates,
+        lastUpdated: new Date().toISOString()
+      };
+      await fs.writeFile(lockFilePath, JSON.stringify(updatedData, null, 2));
+    } catch (error) {
+      logger.log(`Failed to update lock file ${lockFilePath}: ${error.message}`);
+    }
+  }
+
+  /**
+   * Get status of all backup jobs
+   */
+  async getJobStatuses(backupDir = 'backups') {
+    try {
+      const files = await fs.readdir(backupDir);
+      const lockFiles = files.filter(file => file.endsWith('.lock'));
+      
+      const jobs = [];
+      for (const lockFile of lockFiles) {
+        try {
+          const lockFilePath = path.join(backupDir, lockFile);
+          const lockData = JSON.parse(await fs.readFile(lockFilePath, 'utf8'));
+          jobs.push(lockData);
+        } catch (error) {
+          // Skip invalid lock files
+        }
+      }
+      
+      return jobs.sort((a, b) => new Date(b.startTime) - new Date(a.startTime));
+    } catch (error) {
+      return [];
+    }
+  }
+
+  /**
+   * Get status of a specific job
+   */
+  async getJobStatus(jobId, backupDir = 'backups') {
+    try {
+      const lockFilePath = path.join(backupDir, `${jobId}.lock`);
+      const lockData = JSON.parse(await fs.readFile(lockFilePath, 'utf8'));
+      return lockData;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  /**
+   * Generate unique job ID
+   */
+  generateJobId() {
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    return `salesforce-backup-${timestamp}`;
+  }
+
+  /**
+   * Clean up old completed job lock files
+   */
+  async cleanupOldJobs(backupDir = 'backups', maxAgeHours = 24) {
+    try {
+      const files = await fs.readdir(backupDir);
+      const lockFiles = files.filter(file => file.endsWith('.lock'));
+      const cutoffTime = Date.now() - (maxAgeHours * 60 * 60 * 1000);
+      
+      for (const lockFile of lockFiles) {
+        try {
+          const lockFilePath = path.join(backupDir, lockFile);
+          const lockData = JSON.parse(await fs.readFile(lockFilePath, 'utf8'));
+          
+          // Clean up completed or failed jobs older than cutoff
+          if ((lockData.status === 'completed' || lockData.status === 'failed') &&
+              new Date(lockData.endTime).getTime() < cutoffTime) {
+            await fs.unlink(lockFilePath);
+          }
+        } catch (error) {
+          // Skip invalid lock files
+        }
+      }
+    } catch (error) {
+      // Ignore cleanup errors
+    }
+  }
 }

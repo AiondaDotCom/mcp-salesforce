@@ -66,22 +66,24 @@ export async function handleSalesforceBackup(args, client) {
       objectsFilter: objects_filter
     });
     
-    // Start asynchronous backup
+    // Execute async backup - returns immediately
     const jobResult = await backupManager.startAsyncBackup(backup_type, parsedSinceDate);
     
+    // Return immediate response with job information
     let successMessage = `🚀 **Salesforce ${backup_type} backup started successfully!**\n\n`;
     successMessage += `📋 **Job ID**: \`${jobResult.jobId}\`\n`;
     successMessage += `📁 **Backup Location**: \`${jobResult.backupDirectory}\`\n`;
-    successMessage += `🔒 **Lock File**: \`${jobResult.lockFile}\`\n`;
-    successMessage += `📊 **Status**: ${jobResult.status}\n\n`;
+    successMessage += `⚡ **Status**: ${jobResult.status} - Running in background\n\n`;
+    successMessage += `ℹ️ **Monitor Progress**: Use the \`salesforce_backup_status\` tool to check job progress\n`;
+    successMessage += `📊 **View All Jobs**: Use \`salesforce_backup_status\` without parameters to see all jobs\n\n`;
     
-    successMessage += `✨ **Background Processing**:\n`;
-    successMessage += `- Backup is running in the background\n`;
-    successMessage += `- You can continue using other tools while it runs\n`;
-    successMessage += `- Check progress with \`salesforce_backup_status\`\n`;
-    successMessage += `- View completed backups with \`salesforce_backup_list\`\n\n`;
+    successMessage += `🔄 **What happens next?**\n`;
+    successMessage += `- The backup is now running in the background\n`;
+    successMessage += `- You can continue using other tools immediately\n`;
+    successMessage += `- Check progress anytime with \`salesforce_backup_status\`\n`;
+    successMessage += `- You'll find the completed backup in the specified directory\n\n`;
     
-    successMessage += `📁 **Directory Structure** (when complete):\n`;
+    successMessage += `📁 **Expected Directory Structure**:\n`;
     successMessage += `\`\`\`\n`;
     successMessage += `${path.basename(jobResult.backupDirectory)}/\n`;
     successMessage += `├── metadata/           # Schemas and manifest\n`;
@@ -93,10 +95,18 @@ export async function handleSalesforceBackup(args, client) {
     successMessage += `└── logs/               # Backup logs\n`;
     successMessage += `\`\`\`\n\n`;
     
-    successMessage += `🔄 **Monitoring**:\n`;
-    successMessage += `- Job will automatically clean up when complete\n`;
-    successMessage += `- Failed jobs retain lock files for debugging\n`;
-    successMessage += `- Lock files auto-cleanup after 24 hours\n`;
+    // Add next steps suggestions
+    successMessage += `🔄 **Next Steps**:\n`;
+    successMessage += `- Monitor progress: Use \`salesforce_backup_status ${jobResult.jobId}\` for detailed status\n`;
+    successMessage += `- Check all jobs: Use \`salesforce_backup_status\` to see all running/completed jobs\n`;
+    
+    if (backup_type === 'full') {
+      successMessage += `- Schedule incremental backups using \`since_date\` parameter\n`;
+    }
+    
+    if (compression) {
+      successMessage += `- Archive will be created with compression enabled\n`;
+    }
     
     return {
       content: [
@@ -253,118 +263,147 @@ export async function handleSalesforceBackupList(args) {
 /**
  * Salesforce Backup Status MCP Tool
  * 
- * Check the status of running backup jobs
+ * Check the status of backup jobs (running, completed, failed)
  */
 export async function handleSalesforceBackupStatus(args, client) {
+  const { job_id = null } = args;
+
   // Resolve backup directory relative to project root
   const projectRoot = path.resolve(__dirname, '../..');
-  const output_directory = path.join(projectRoot, 'backups');
+  const backupDirectory = path.join(projectRoot, 'backups');
 
   try {
-    // Create backup manager to access job statuses
+    // Ensure backup directory exists
+    await fs.mkdir(backupDirectory, { recursive: true });
+
+    // Create backup manager to access status methods
     const backupManager = new SalesforceBackupManager(client, {
-      outputDirectory: output_directory
+      outputDirectory: backupDirectory
     });
-    
-    // Get all job statuses
-    const jobStatuses = await backupManager.getBackupJobStatuses();
-    
-    if (jobStatuses.length === 0) {
-      return {
-        content: [
-          {
+
+    if (job_id) {
+      // Get status of specific job
+      const jobStatus = await backupManager.getBackupJobStatus(job_id);
+      
+      if (!jobStatus) {
+        return {
+          content: [{
             type: "text",
-            text: `📭 **No backup jobs found**\n\nNo running or recent backup jobs. Start a backup using the \`salesforce_backup\` tool.`
-          }
-        ]
-      };
-    }
-    
-    // Sort jobs by start time (most recent first)
-    jobStatuses.sort((a, b) => new Date(b.startTime) - new Date(a.startTime));
-    
-    let response = `📊 **Backup Job Status** (${jobStatuses.length} jobs)\n\n`;
-    
-    for (const [index, job] of jobStatuses.entries()) {
-      const statusIcon = {
-        'starting': '🟡',
-        'running': '🔄',
-        'completed': '✅',
-        'failed': '❌'
-      }[job.status] || '❓';
+            text: `❌ **Job not found**: No backup job found with ID \`${job_id}\`\n\nUse \`salesforce_backup_status\` without parameters to see all jobs.`
+          }]
+        };
+      }
+
+      // Format single job status
+      let statusMessage = `📋 **Backup Job Status**\n\n`;
+      statusMessage += `🆔 **Job ID**: \`${jobStatus.jobId}\`\n`;
+      statusMessage += `⚡ **Status**: ${getStatusEmoji(jobStatus.status)} ${jobStatus.status.toUpperCase()}\n`;
+      statusMessage += `📅 **Started**: ${new Date(jobStatus.startTime).toLocaleString()}\n`;
       
-      response += `**${index + 1}. ${job.jobId}** ${statusIcon}\n`;
-      response += `   📊 Status: ${job.status}\n`;
-      response += `   📅 Started: ${new Date(job.startTime).toLocaleString()}\n`;
-      
-      if (job.message) {
-        response += `   💬 Message: ${job.message}\n`;
+      if (jobStatus.endTime) {
+        statusMessage += `🏁 **Completed**: ${new Date(jobStatus.endTime).toLocaleString()}\n`;
       }
       
-      if (job.progress) {
-        response += `   📈 Progress: ${job.progress}%\n`;
-      }
+      statusMessage += `📁 **Backup Directory**: \`${jobStatus.backupDirectory}\`\n`;
+      statusMessage += `📊 **Progress**: ${jobStatus.progress}%\n`;
+      statusMessage += `💬 **Message**: ${jobStatus.message}\n`;
       
-      if (job.completedAt) {
-        response += `   ✅ Completed: ${new Date(job.completedAt).toLocaleString()}\n`;
-      }
-      
-      if (job.failedAt) {
-        response += `   ❌ Failed: ${new Date(job.failedAt).toLocaleString()}\n`;
-      }
-      
-      if (job.error) {
-        response += `   🚨 Error: ${job.error}\n`;
-      }
-      
-      response += `   📁 Directory: \`${job.backupDirectory}\`\n`;
-      
-      if (job.result && job.result.stats) {
-        const stats = job.result.stats;
+      if (jobStatus.result) {
+        const stats = jobStatus.result.stats;
         const totalFiles = stats.contentVersions + stats.attachments + stats.documents;
         const sizeMB = Math.round(stats.totalBytes / (1024 * 1024) * 100) / 100;
-        response += `   📦 Files: ${totalFiles} (${sizeMB} MB)\n`;
+        
+        statusMessage += `\n📊 **Backup Results**:\n`;
+        statusMessage += `- ⏱️ **Duration**: ${jobStatus.result.duration} seconds\n`;
+        statusMessage += `- 📄 **ContentVersion files**: ${stats.contentVersions}\n`;
+        statusMessage += `- 📎 **Attachment files**: ${stats.attachments}\n`;
+        statusMessage += `- 📋 **Document files**: ${stats.documents}\n`;
+        statusMessage += `- 📦 **Total files**: ${totalFiles}\n`;
+        statusMessage += `- 💾 **Total size**: ${sizeMB} MB\n`;
+        
+        if (stats.errors > 0) {
+          statusMessage += `- ⚠️ **Errors**: ${stats.errors} failed downloads\n`;
+        }
       }
       
-      response += `\n`;
+      if (jobStatus.error) {
+        statusMessage += `\n❌ **Error**: ${jobStatus.error}\n`;
+      }
+
+      return {
+        content: [{
+          type: "text",
+          text: statusMessage
+        }]
+      };
+
+    } else {
+      // Get status of all jobs
+      const allJobs = await backupManager.getBackupJobStatuses();
+      
+      if (allJobs.length === 0) {
+        return {
+          content: [{
+            type: "text",
+            text: `📋 **No backup jobs found**\n\nNo backup jobs have been started yet. Use the \`salesforce_backup\` tool to start a backup.`
+          }]
+        };
+      }
+
+      // Format all jobs status
+      let statusMessage = `📋 **All Backup Jobs** (${allJobs.length} total)\n\n`;
+      
+      allJobs.forEach((job, index) => {
+        statusMessage += `**${index + 1}. ${job.jobId}**\n`;
+        statusMessage += `   ${getStatusEmoji(job.status)} Status: ${job.status.toUpperCase()}\n`;
+        statusMessage += `   📅 Started: ${new Date(job.startTime).toLocaleString()}\n`;
+        statusMessage += `   📊 Progress: ${job.progress}%\n`;
+        statusMessage += `   💬 ${job.message}\n`;
+        
+        if (job.endTime) {
+          statusMessage += `   🏁 Completed: ${new Date(job.endTime).toLocaleString()}\n`;
+        }
+        
+        if (job.error) {
+          statusMessage += `   ❌ Error: ${job.error}\n`;
+        }
+        
+        statusMessage += `\n`;
+      });
+      
+      statusMessage += `ℹ️ **Tip**: Use \`salesforce_backup_status\` with a specific \`job_id\` to get detailed information about a single job.`;
+
+      return {
+        content: [{
+          type: "text",
+          text: statusMessage
+        }]
+      };
     }
-    
-    // Count jobs by status
-    const statusCounts = jobStatuses.reduce((acc, job) => {
-      acc[job.status] = (acc[job.status] || 0) + 1;
-      return acc;
-    }, {});
-    
-    response += `📈 **Summary**:\n`;
-    if (statusCounts.running) response += `- 🔄 Running: ${statusCounts.running}\n`;
-    if (statusCounts.starting) response += `- 🟡 Starting: ${statusCounts.starting}\n`;
-    if (statusCounts.completed) response += `- ✅ Completed: ${statusCounts.completed}\n`;
-    if (statusCounts.failed) response += `- ❌ Failed: ${statusCounts.failed}\n`;
-    
-    response += `\n🔧 **Management**:\n`;
-    response += `- Completed jobs automatically clean up their lock files\n`;
-    response += `- Failed jobs keep lock files for debugging\n`;
-    response += `- Old lock files auto-cleanup after 24 hours\n`;
-    
-    return {
-      content: [
-        {
-          type: "text",
-          text: response
-        }
-      ]
-    };
-    
+
   } catch (error) {
+    logger.log('Backup status error:', error);
+    
     return {
-      content: [
-        {
-          type: "text",
-          text: `❌ **Failed to check backup status**: ${error.message}\n\nPlease check your backup directory access.`
-        }
-      ]
+      content: [{
+        type: "text",
+        text: `❌ **Error checking backup status**: ${error.message}\n\nPlease check that the backup system is properly configured.`
+      }]
     };
   }
+}
+
+/**
+ * Helper function to get status emoji
+ */
+function getStatusEmoji(status) {
+  const emojis = {
+    'starting': '🚀',
+    'running': '⚡',
+    'completed': '✅',
+    'failed': '❌'
+  };
+  return emojis[status] || '❓';
 }
 
 export const BACKUP_TOOLS = {
@@ -433,10 +472,15 @@ export const BACKUP_TOOLS = {
   
   salesforce_backup_status: {
     name: "salesforce_backup_status",
-    description: "Check the status of running backup jobs, including progress and any errors",
+    description: "Check the status of Salesforce backup jobs. Monitor running, completed, or failed backup operations. Use without parameters to see all jobs, or specify a job_id to get detailed status of a specific backup job.",
     inputSchema: {
       type: "object",
-      properties: {}
+      properties: {
+        job_id: {
+          type: "string",
+          description: "Optional: Specific backup job ID to check status for. If not provided, shows status of all backup jobs."
+        }
+      }
     }
   }
 };

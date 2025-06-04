@@ -125,20 +125,25 @@ export class TokenManager {
   }
 
   /**
-   * Perform initial OAuth flow and store tokens
+   * Perform initial OAuth flow with enhanced retry mechanism
    */
   async authenticateWithOAuth() {
     try {
+      console.log('🚀 Starting enhanced OAuth authentication...');
       const oauth = new OAuthFlow(this.clientId, this.clientSecret, this.instanceUrl);
       
-      const tokens = await oauth.startFlow();
+      // Use the enhanced authentication with retry logic
+      const tokens = await oauth.authenticateWithRetry();
       
+      console.log('💾 Storing tokens securely...');
       // Store tokens securely
       await this.storage.storeTokens(tokens);
       this.currentTokens = tokens;
       
+      console.log('✅ OAuth authentication completed successfully');
       return tokens;
     } catch (error) {
+      console.error('❌ OAuth authentication failed:', error.message);
       throw error;
     }
   }

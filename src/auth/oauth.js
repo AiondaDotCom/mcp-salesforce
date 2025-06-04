@@ -24,7 +24,10 @@ export class OAuthFlow {
     this.instanceUrl = instanceUrl.replace(/\/$/, ''); // Remove trailing slash
     this.callbackPort = callbackPort || this.getPreferredPort();
     this.state = crypto.randomBytes(32).toString('hex');
+    this.stateExpiration = Date.now() + (10 * 60 * 1000); // 10 minutes
     this.server = null;
+    this.retryCount = 0;
+    this.maxRetries = 3;
   }
 
   /**
@@ -43,7 +46,7 @@ export class OAuthFlow {
   }
 
   /**
-   * Build the OAuth authorization URL
+   * Build the OAuth authorization URL with cache busting
    */
   getAuthorizationUrl() {
     const params = new URLSearchParams({
@@ -52,10 +55,32 @@ export class OAuthFlow {
       redirect_uri: `http://localhost:${this.callbackPort}/callback`,
       scope: 'api refresh_token',
       state: this.state,
-      prompt: 'login'
+      prompt: 'login',
+      // Add cache busting parameter to prevent browser caching issues
+      t: Date.now().toString()
     });
 
     return `${this.instanceUrl}/services/oauth2/authorize?${params.toString()}`;
+  }
+
+  /**
+   * Validate state with expiration check
+   */
+  isValidState(receivedState) {
+    if (Date.now() > this.stateExpiration) {
+      console.log('⏰ OAuth state expired');
+      return { valid: false, reason: 'State expired - authentication session timed out (10 minutes). Please start a new authentication.' };
+    }
+
+    if (receivedState !== this.state) {
+      console.log('🚨 OAuth state mismatch:', {
+        received: receivedState?.substring(0, 16) + '...',
+        expected: this.state?.substring(0, 16) + '...'
+      });
+      return { valid: false, reason: 'Invalid state parameter - possible CSRF attack or browser cache issue' };
+    }
+
+    return { valid: true };
   }
 
   /**
@@ -120,8 +145,18 @@ export class OAuthFlow {
         try {
           const { code, state, error } = req.query;
 
+          console.log('📥 OAuth callback received:', {
+            hasCode: !!code,
+            hasState: !!state,
+            hasError: !!error,
+            receivedState: state?.substring(0, 16) + '...',
+            expectedState: this.state?.substring(0, 16) + '...',
+            statesMatch: state === this.state
+          });
+
           if (error) {
             const errorMsg = `OAuth error: ${error}`;
+            console.error('❌ OAuth error received:', errorMsg);
             res.status(400).send(`<h1>Authentication Failed</h1><p>${errorMsg}</p>`);
             if (!resolved) {
               resolved = true;
@@ -131,8 +166,40 @@ export class OAuthFlow {
           }
 
           if (state !== this.state) {
-            const errorMsg = 'Invalid state parameter - possible CSRF attack';
-            res.status(400).send(`<h1>Security Error</h1><p>${errorMsg}</p>`);
+            // Use enhanced state validation
+            const validation = this.isValidState(state);
+            const errorMsg = validation.reason;
+            
+            console.error('🚨 CSRF protection triggered:', {
+              receivedState: state,
+              expectedState: this.state,
+              receivedLength: state?.length,
+              expectedLength: this.state?.length,
+              validation: validation
+            });
+            
+            res.status(400).send(`
+              <h1>🔐 Authentication Security Error</h1>
+              <p><strong>${errorMsg}</strong></p>
+              <details>
+                <summary>🔍 Debug Information (Click to expand)</summary>
+                <p><strong>Expected state:</strong> ${this.state?.substring(0, 16)}...</p>
+                <p><strong>Received state:</strong> ${state?.substring(0, 16)}...</p>
+                <p><strong>State expired:</strong> ${Date.now() > this.stateExpiration ? 'Yes' : 'No'}</p>
+                <p><strong>Time remaining:</strong> ${Math.max(0, Math.floor((this.stateExpiration - Date.now()) / 1000))} seconds</p>
+                <hr>
+                <p><strong>💡 Common causes and solutions:</strong></p>
+                <ul>
+                  <li>🔄 <strong>Browser caching:</strong> Clear browser cache and try again</li>
+                  <li>⏰ <strong>Session timeout:</strong> Authentication must complete within 10 minutes</li>
+                  <li>🔀 <strong>Multiple attempts:</strong> Only one authentication session at a time</li>
+                  <li>🔄 <strong>Server restart:</strong> Restart the MCP server and try again</li>
+                </ul>
+                <p><strong>🔧 Quick fix:</strong> Close this tab, restart the authentication, and complete it quickly.</p>
+              </details>
+              <br>
+              <button onclick="window.close()">Close Window</button>
+            `);
             if (!resolved) {
               resolved = true;
               reject(new Error(errorMsg));
@@ -279,5 +346,46 @@ export class OAuthFlow {
     } catch (error) {
       throw new Error(`Failed to refresh access token: ${error.message}`);
     }
+  }
+
+  /**
+   * Enhanced authentication with retry logic and state regeneration
+   */
+  async authenticateWithRetry() {
+    for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
+      try {
+        console.log(`🔄 Authentication attempt ${attempt}/${this.maxRetries}`);
+        
+        // Reset state and expiration for each attempt to avoid CSRF issues
+        this.state = crypto.randomBytes(32).toString('hex');
+        this.stateExpiration = Date.now() + (10 * 60 * 1000);
+        
+        console.log(`   📝 New state generated: ${this.state.substring(0, 16)}...`);
+        console.log(`   ⏰ Expires at: ${new Date(this.stateExpiration).toISOString()}`);
+        
+        const tokens = await this.startFlow();
+        console.log('✅ Authentication successful');
+        return tokens;
+        
+      } catch (error) {
+        console.log(`❌ Attempt ${attempt} failed:`, error.message);
+        
+        if (attempt === this.maxRetries) {
+          throw new Error(`Authentication failed after ${this.maxRetries} attempts: ${error.message}`);
+        }
+        
+        // Wait before retry (exponential backoff)
+        const waitTime = 1000 * Math.pow(2, attempt - 1);
+        console.log(`   ⏳ Waiting ${waitTime}ms before retry...`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+      }
+    }
+  }
+
+  /**
+   * Main authenticate method - uses retry logic by default
+   */
+  async authenticate() {
+    return this.authenticateWithRetry();
   }
 }

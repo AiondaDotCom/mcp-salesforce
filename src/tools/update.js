@@ -32,7 +32,45 @@ export async function executeUpdate(client, args) {
     let contextMessage = '';
     
     if (!hasDocumentation) {
-      contextMessage = `⚠️ **Tipp:** Verwende \`salesforce_learn\` um alle verfügbaren Objekte und Felder zu analysieren.\n\n`;
+      contextMessage = `⚠️ **Tip:** Use \`salesforce_learn\` to analyze all available objects and fields.\n\n`;
+    } else {
+      // Provide context about the object if available
+      const documentation = await getInstallationDocumentation();
+      const objectInfo = documentation.objects[sobject];
+      if (objectInfo && !objectInfo.error) {
+        // Check for read-only fields in the provided data
+        const readOnlyFieldsInData = Object.keys(data).filter(fieldName => {
+          const field = objectInfo.fields[fieldName];
+          return field && field.writability && field.writability.read_only;
+        });
+        
+        const nonUpdateableFields = Object.keys(data).filter(fieldName => {
+          const field = objectInfo.fields[fieldName];
+          return field && !field.updateable;
+        });
+        
+        if (readOnlyFieldsInData.length > 0) {
+          const readOnlyWarnings = readOnlyFieldsInData.map(fieldName => {
+            const field = objectInfo.fields[fieldName];
+            const reason = field.writability.system_managed ? 'System Managed' :
+                          field.writability.formula ? 'Formula Field' :
+                          field.writability.calculated ? 'Calculated Field' :
+                          field.writability.rollup_summary ? 'Rollup Summary' :
+                          field.writability.auto_number ? 'Auto Number' : 'Read-Only';
+            return `- ${field.label || fieldName} (${fieldName}) - ${reason}`;
+          }).join('\n');
+          
+          contextMessage += `⚠️ **Warning: Read-only fields detected in update data:**\n${readOnlyWarnings}\n\n` +
+                           `These fields cannot be updated and will be ignored by Salesforce.\n\n`;
+        } else if (nonUpdateableFields.length > 0) {
+          const nonUpdateableWarnings = nonUpdateableFields.map(fieldName => {
+            const field = objectInfo.fields[fieldName];
+            return `- ${field.label || fieldName} (${fieldName})`;
+          }).join('\n');
+          
+          contextMessage += `⚠️ **Warning: Non-updateable fields detected:**\n${nonUpdateableWarnings}\n\n`;
+        }
+      }
     }
     
     if (!sobject || typeof sobject !== 'string') {

@@ -217,6 +217,12 @@ function handleSpecificObjectInfo(objectName, documentation, options) {
         result += `- **Updateable:** ${field.updateable ? '✅' : '❌'}\n`;
         result += `- **Createable:** ${field.createable ? '✅' : '❌'}\n`;
         
+        // Enhanced writability information
+        if (field.writability) {
+          const writabilityStatus = getWritabilityStatus(field.writability);
+          result += `- **Writability:** ${writabilityStatus}\n`;
+        }
+        
         // Type-specific information
         if (field.max_length) {
           result += `- **Max Length:** ${field.max_length}\n`;
@@ -350,6 +356,12 @@ function handleFieldSearch(searchTerm, documentation, options) {
         result += `- **Custom:** ${field.custom ? '✅ Yes' : '❌ No'}\n`;
         result += `- **Updateable:** ${field.updateable ? '✅' : '❌'}\n`;
         result += `- **Createable:** ${field.createable ? '✅' : '❌'}\n`;
+        
+        // Enhanced writability information
+        if (field.writability) {
+          const writabilityStatus = getWritabilityStatus(field.writability);
+          result += `- **Writability:** ${writabilityStatus}\n`;
+        }
         
         if (field.max_length) {
           result += `- **Max Length:** ${field.max_length}\n`;
@@ -617,4 +629,28 @@ async function handleGeneralOverview(documentation, options) {
       text: result
     }]
   };
+}
+
+function getWritabilityStatus(writability) {
+  if (!writability) return 'Unknown';
+  
+  if (writability.read_only) {
+    if (writability.formula || writability.calculated) {
+      return '🔒 Read-Only (Formula/Calculated)';
+    } else if (writability.rollup_summary) {
+      return '🔒 Read-Only (Rollup Summary)';
+    } else if (writability.auto_number) {
+      return '🔒 Read-Only (Auto Number)';
+    } else if (writability.system_managed) {
+      return '🔒 Read-Only (System Managed)';
+    } else {
+      return '🔒 Read-Only';
+    }
+  } else if (writability.create_only) {
+    return '📝 Create Only';
+  } else if (writability.fully_writable) {
+    return '✅ Fully Writable';
+  } else {
+    return '⚠️ Limited Writability';
+  }
 }

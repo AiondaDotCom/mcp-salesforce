@@ -9,7 +9,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { logger } from '../utils/debug.js';
+import { debug as logger } from '../utils/debug.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -225,7 +225,18 @@ async function analyzeObject(obj, salesforceClient, options) {
       custom: field.custom,
       required: !field.nillable && !field.defaultedOnCreate,
       updateable: field.updateable,
-      createable: field.createable
+      createable: field.createable,
+      // Enhanced writability information
+      writability: {
+        fully_writable: field.updateable && field.createable,
+        create_only: field.createable && !field.updateable,
+        read_only: !field.updateable && !field.createable,
+        system_managed: isSystemManagedField(field),
+        calculated: field.calculated || false,
+        auto_number: field.type === 'autonumber',
+        formula: field.type === 'formula' || field.calculated,
+        rollup_summary: field.type === 'summary'
+      }
     };
     
     // Add type-specific information
@@ -282,6 +293,42 @@ function isSystemField(field) {
     'LastViewedDate', 'LastReferencedDate'
   ];
   return systemFields.includes(field.name);
+}
+
+function isSystemManagedField(field) {
+  // System fields that are automatically managed by Salesforce
+  const systemManagedFields = [
+    'Id', 'CreatedDate', 'CreatedById', 'LastModifiedDate', 'LastModifiedById',
+    'SystemModstamp', 'IsDeleted', 'MasterRecordId', 'LastActivityDate',
+    'LastViewedDate', 'LastReferencedDate', 'RecordTypeId'
+  ];
+  
+  // Check if it's a system managed field by name
+  if (systemManagedFields.includes(field.name)) {
+    return true;
+  }
+  
+  // Check if it's an auto-number field
+  if (field.type === 'autonumber') {
+    return true;
+  }
+  
+  // Check if it's a formula field
+  if (field.type === 'formula' || field.calculated) {
+    return true;
+  }
+  
+  // Check if it's a rollup summary field
+  if (field.type === 'summary') {
+    return true;
+  }
+  
+  // Check if field is marked as not updateable and not createable (fully read-only)
+  if (!field.updateable && !field.createable) {
+    return true;
+  }
+  
+  return false;
 }
 
 async function ensureCacheDirectory() {

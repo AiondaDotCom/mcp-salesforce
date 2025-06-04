@@ -39,7 +39,23 @@ export async function executeCreate(client, args) {
           .map(([name, field]) => `${field.label} (${name})`);
         
         if (requiredFields.length > 0) {
-          contextMessage = `💡 **Erforderliche Felder für ${objectInfo.basic_info.label}:** ${requiredFields.join(', ')}\n\n`;
+          contextMessage = `💡 **Required fields for ${objectInfo.basic_info.label}:** ${requiredFields.join(', ')}\n\n`;
+        }
+        
+        // Check for read-only fields in the provided data
+        const readOnlyFieldsInData = Object.keys(data).filter(fieldName => {
+          const field = objectInfo.fields[fieldName];
+          return field && field.writability && field.writability.read_only;
+        });
+        
+        if (readOnlyFieldsInData.length > 0) {
+          const readOnlyWarnings = readOnlyFieldsInData.map(fieldName => {
+            const field = objectInfo.fields[fieldName];
+            return `- ${field.label || fieldName} (${fieldName})`;
+          }).join('\n');
+          
+          contextMessage += `⚠️ **Warning: Read-only fields detected in data:**\n${readOnlyWarnings}\n\n` +
+                           `These fields cannot be set during record creation and will be ignored by Salesforce.\n\n`;
         }
       }
     }

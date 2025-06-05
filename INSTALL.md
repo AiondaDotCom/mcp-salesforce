@@ -10,8 +10,8 @@ The easiest way to use MCP Salesforce is with NPX - no installation needed!
 
 ```bash
 # Test NPX access
-npx @aiondadotcom/mcp-salesforce --version
-npx @aiondadotcom/mcp-salesforce --help
+npx -p @aiondadotcom/mcp-salesforce mcp-salesforce --version
+npx -p @aiondadotcom/mcp-salesforce mcp-salesforce --help
 ```
 
 ### MCP Configuration with NPX

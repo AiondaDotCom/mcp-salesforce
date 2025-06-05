@@ -25,17 +25,17 @@ config();
 // Handle CLI arguments
 const args = process.argv.slice(2);
 if (args.includes('--version') || args.includes('-v')) {
-  console.log('1.0.0');
+  console.log('1.0.7');
   process.exit(0);
 }
 
 if (args.includes('--help') || args.includes('-h')) {
   console.log(`
-@aiondadotcom/mcp-salesforce v1.0.0
+@aiondadotcom/mcp-salesforce v1.0.7
 
 USAGE:
-  npx @aiondadotcom/mcp-salesforce              # Start MCP server
-  npx @aiondadotcom/mcp-salesforce setup       # Run setup
+  npx -p @aiondadotcom/mcp-salesforce mcp-salesforce              # Start MCP server
+  npx -p @aiondadotcom/mcp-salesforce mcp-salesforce setup       # Run setup
   
 ENVIRONMENT VARIABLES:
   SALESFORCE_CLIENT_ID      - OAuth Client ID
@@ -50,11 +50,24 @@ DOCUMENTATION:
 
 // Handle setup command
 if (args.includes('setup')) {
-  import('./auth/oauth.js').then(({ OAuth }) => {
-    const oauth = new OAuth();
-    oauth.startSetup();
-  });
-  process.exit(0);
+  (async () => {
+    try {
+      // Simple approach: just run the setup tool
+      const { execSync } = await import('child_process');
+      const { fileURLToPath } = await import('url');
+      const { dirname, join } = await import('path');
+      
+      const __filename = fileURLToPath(import.meta.url);
+      const __dirname = dirname(__filename);
+      const setupPath = join(__dirname, '..', 'bin', 'setup.js');
+      
+      execSync(`node "${setupPath}"`, { stdio: 'inherit' });
+      process.exit(0);
+    } catch (error) {
+      console.error('Setup failed:', error.message);
+      process.exit(1);
+    }
+  })();
 }
 
 class MCPSalesforceServer {

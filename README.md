@@ -58,13 +58,13 @@ Use NPX to run the MCP server without any permanent installation:
 **NPX Command Line Usage:**
 ```bash
 # Get version
-npx @aiondadotcom/mcp-salesforce --version
+npx -p @aiondadotcom/mcp-salesforce mcp-salesforce --version
 
 # Get help
-npx @aiondadotcom/mcp-salesforce --help
+npx -p @aiondadotcom/mcp-salesforce mcp-salesforce --help
 
 # Run OAuth setup
-npx @aiondadotcom/mcp-salesforce setup
+npx -p @aiondadotcom/mcp-salesforce mcp-salesforce setup
 ```
 
 #### 🔧 **Alternative: Development Setup**
@@ -114,11 +114,11 @@ NPX usage is now available for all users:
 
 ```bash
 # Test the published package
-npx @aiondadotcom/mcp-salesforce --version
-npx @aiondadotcom/mcp-salesforce --help
+npx -p @aiondadotcom/mcp-salesforce mcp-salesforce --version
+npx -p @aiondadotcom/mcp-salesforce mcp-salesforce --help
 
 # Run OAuth setup
-npx @aiondadotcom/mcp-salesforce setup
+npx -p @aiondadotcom/mcp-salesforce mcp-salesforce setup
 ```
 
 ### Publication Details

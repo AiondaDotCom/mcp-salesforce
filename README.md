@@ -141,26 +141,6 @@ npx -p @aiondadotcom/mcp-salesforce mcp-salesforce setup
 
 ## 🔧 Configuration
 
-Here's a step-by-step walkthrough of the MCP Salesforce Server in action, showing a real-world use case of verifying and updating company address information:
-
-### Step 1: Address Verification Request
-![Address Verification](docs/step1.png)
-*Claude checking if the Aionda GmbH account in Salesforce has the correct address by comparing it with their current website address*
-
-### Step 2: Address Comparison Results  
-![Address Analysis](docs/step2.png)
-*Claude identifying that the Salesforce address is outdated, showing detailed comparison between the current Salesforce data and the actual address from the company website*
-
-### Step 3: Automated Address Update
-![Address Update](docs/step3.png)
-*Claude successfully updating the Salesforce account with the correct current address, showing exactly which fields were changed*
-
-### Step 4: Verification in Salesforce
-![Salesforce Confirmation](docs/step4.png)
-*The updated account record in Salesforce showing the corrected address information is now accurate and up-to-date*
-
-## 🔧 Configuration
-
 ### Salesforce Connected App Setup
 
 1. In Salesforce Setup, create a new Connected App:

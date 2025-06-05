@@ -27,13 +27,13 @@ config();
 // Handle CLI arguments
 const args = process.argv.slice(2);
 if (args.includes('--version') || args.includes('-v')) {
-  console.log('1.1.1');
+  console.log('1.1.2');
   process.exit(0);
 }
 
 if (args.includes('--help') || args.includes('-h')) {
   console.log(`
-@aiondadotcom/mcp-salesforce v1.1.1
+@aiondadotcom/mcp-salesforce v1.1.2
 
 USAGE:
   npx -p @aiondadotcom/mcp-salesforce mcp-salesforce              # Start MCP server

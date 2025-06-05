@@ -694,6 +694,90 @@ export class BackupJobManager {
   }
 
   /**
+   * Execute backup with real-time progress tracking
+   */
+  async executeBackupWithProgress(backupManager, lockFilePath, options) {
+    const startTime = Date.now();
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const backupDir = path.join(backupManager.options.outputDirectory, `salesforce-backup-${timestamp}`);
+    
+    try {
+      // Ensure base output directory exists
+      await fs.mkdir(backupManager.options.outputDirectory, { recursive: true });
+      
+      // Create backup directory structure
+      await backupManager.createBackupStructure(backupDir);
+      
+      // Phase 1: Backup metadata (10-30%)
+      await this.updateLockFile(lockFilePath, {
+        status: 'running',
+        message: 'Backing up metadata...',
+        progress: 10
+      });
+      
+      await backupManager.backupMetadata(backupDir);
+      
+      await this.updateLockFile(lockFilePath, {
+        message: 'Metadata backup completed',
+        progress: 30
+      });
+      
+      // Phase 2: Backup object data (30-60%)
+      await this.updateLockFile(lockFilePath, {
+        message: 'Backing up object data...',
+        progress: 35
+      });
+      
+      await backupManager.backupObjectData(backupDir, options.sinceDate);
+      
+      await this.updateLockFile(lockFilePath, {
+        message: 'Object data backup completed',
+        progress: 60
+      });
+      
+      // Phase 3: Backup files if enabled (60-85%)
+      if (backupManager.options.includeFiles || backupManager.options.includeAttachments || backupManager.options.includeDocuments) {
+        await this.updateLockFile(lockFilePath, {
+          message: 'Downloading files...',
+          progress: 65
+        });
+        
+        await backupManager.backupFiles(backupDir, options.sinceDate);
+        
+        await this.updateLockFile(lockFilePath, {
+          message: 'File downloads completed',
+          progress: 85
+        });
+      } else {
+        await this.updateLockFile(lockFilePath, {
+          message: 'Skipping file downloads (disabled)',
+          progress: 85
+        });
+      }
+      
+      // Phase 4: Create backup manifest (85-100%)
+      await this.updateLockFile(lockFilePath, {
+        message: 'Creating backup manifest...',
+        progress: 90
+      });
+      
+      const stats = await backupManager.createBackupManifest(backupDir, startTime);
+      
+      const duration = Math.round((Date.now() - startTime) / 1000);
+      
+      return {
+        success: true,
+        backupDirectory: backupDir,
+        duration: duration,
+        stats: stats
+      };
+      
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
    * Run the actual backup process in the background
    */
   async runBackgroundBackup(salesforceClient, jobId, backupDir, lockFilePath, options) {
@@ -708,36 +792,8 @@ export class BackupJobManager {
         objectsFilter: options.objectsFilter || []
       });
 
-      // Update progress: Starting metadata backup
-      await this.updateLockFile(lockFilePath, {
-        status: 'running',
-        message: 'Backing up metadata...',
-        progress: 10
-      });
-
-      // Update progress: Starting data backup
-      await this.updateLockFile(lockFilePath, {
-        message: 'Backing up object data...',
-        progress: 40
-      });
-
-      // Update progress: Starting file downloads
-      await this.updateLockFile(lockFilePath, {
-        message: 'Downloading files...',
-        progress: 70
-      });
-
-      // Execute the actual backup
-      const result = await backupManager.createBackup(
-        options.backupType || 'incremental',
-        options.sinceDate
-      );
-
-      // Update progress: Finalizing
-      await this.updateLockFile(lockFilePath, {
-        message: 'Finalizing backup...',
-        progress: 90
-      });
+      // Execute the backup with real progress tracking
+      const result = await this.executeBackupWithProgress(backupManager, lockFilePath, options);
 
       // Complete the job
       await this.updateLockFile(lockFilePath, {
@@ -838,6 +894,20 @@ export class BackupJobManager {
       return lockData;
     } catch (error) {
       return null;
+    }
+  }
+
+  /**
+   * Check if a specific job is currently running
+   */
+  async isJobRunning(jobId, backupDir = 'backups') {
+    try {
+      const lockFilePath = path.join(backupDir, `${jobId}.lock`);
+      const lockData = JSON.parse(await fs.readFile(lockFilePath, 'utf8'));
+      return lockData.status === 'running';
+    } catch (error) {
+      // If lock file doesn't exist or can't be read, job is not running
+      return false;
     }
   }
 

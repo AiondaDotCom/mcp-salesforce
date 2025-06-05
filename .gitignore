@@ -97,3 +97,4 @@ jspm_packages/
 backups/
 test-data/
 dist/*.tgz
+clean

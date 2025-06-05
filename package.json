@@ -1,6 +1,6 @@
 {
   "name": "@aiondadotcom/mcp-salesforce",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Model Context Protocol (MCP) server for Salesforce integration using OAuth authentication",
   "main": "src/index.js",
   "type": "module",

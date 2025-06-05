@@ -124,7 +124,7 @@ npx -p @aiondadotcom/mcp-salesforce mcp-salesforce setup
 ### Publication Details
 
 - **Package Name**: `@aiondadotcom/mcp-salesforce`
-- **Version**: `1.0.0`
+- **Version**: `1.0.7` (latest)
 - **Registry**: NPM Public Registry
 - **Organization**: `@aiondadotcom`
 - **Access**: Public
@@ -132,10 +132,12 @@ npx -p @aiondadotcom/mcp-salesforce mcp-salesforce setup
 **Status**: 
 - ✅ Package published to NPM
 - ✅ NPX compatibility verified 
+- ✅ Binary wrapper implemented
+- ✅ Setup command functional
 - ✅ MCP configuration ready
 - ✅ **Available for immediate use**
 
-🎉 All NPX examples in this README now work for end users worldwide!
+🎉 All NPX functionality now works for end users worldwide!
 
 ## 🔧 Configuration
 

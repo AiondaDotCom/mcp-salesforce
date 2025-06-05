@@ -10,7 +10,7 @@ A **Model Context Protocol (MCP) server** that provides seamless integration wit
 - **🌐 Universal Salesforce Integration** - Works with any Salesforce org, including custom objects and fields  
 - **🧠 Smart Installation Learning** - Analyzes your complete Salesforce setup to provide intelligent assistance
 - **🔍 Dynamic Schema Discovery** - Automatically adapts to your Salesforce configuration
-- **🔒 Secure Token Storage** - Uses macOS Keychain for production-grade security
+- **🔒 Secure Token Storage** - File-based storage with strict permissions for production-grade security
 - **📝 Full CRUD Operations** - Query, create, update, and delete any Salesforce records
 - **📊 Schema Inspection** - Get detailed information about objects and fields
 - **💡 Context-Aware Suggestions** - Provides intelligent field and object name suggestions
@@ -753,7 +753,7 @@ Account "TechCorp Ltd" (001XX000003DHPG):
 - **Automatic Refresh**: Tokens refreshed automatically before expiration
 - **Secure Cleanup**: Tokens removed from memory after use
 - **Input Validation**: All inputs validated and sanitized
-- **Migration**: Automatic migration from legacy Keychain storage to file-based storage
+- **Migration**: File-based token storage with 600 permissions for secure credential management
 
 ## 🧪 Testing
 
@@ -789,7 +789,7 @@ npm run setup -- --validate
 - **Location**: Tokens stored in `cache/salesforce-tokens.json` (excluded from git)
 - **Automatic Security**: Permission verification and automatic fixing if needed
 - **No Network Exposure**: Tokens never leave your local machine
-- **Keychain Migration**: Upgraded from macOS Keychain to reliable file-based storage
+- **File-based Security**: Secure token storage with strict file permissions for credential protection
 
 **Security Verification:**
 ```bash

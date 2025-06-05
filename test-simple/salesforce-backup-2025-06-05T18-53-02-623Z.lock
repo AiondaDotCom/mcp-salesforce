@@ -1,0 +1,18 @@
+{
+  "jobId": "salesforce-backup-2025-06-05T18-53-02-623Z",
+  "startTime": "2025-06-05T18:53:02.625Z",
+  "status": "failed",
+  "message": "Backup failed: this.client.describeGlobal is not a function",
+  "progress": 0,
+  "backupDirectory": "test-simple/backup-2025-06-05T18-53-02-624Z",
+  "options": {
+    "backupType": "incremental",
+    "includeFiles": true,
+    "includeAttachments": true,
+    "includeDocuments": true
+  },
+  "pid": 23404,
+  "lastUpdated": "2025-06-05T18:53:02.640Z",
+  "error": "this.client.describeGlobal is not a function",
+  "endTime": "2025-06-05T18:53:02.640Z"
+}

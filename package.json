@@ -1,6 +1,6 @@
 {
   "name": "@aiondadotcom/mcp-salesforce",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "description": "Model Context Protocol (MCP) server for Salesforce integration using OAuth authentication",
   "main": "src/index.js",
   "type": "module",
@@ -37,7 +37,6 @@
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
     "jsforce": "^3.8.2",
-    "keychain": "^1.5.0",
     "node-fetch": "^3.3.2",
     "open": "^8.4.2"
   },

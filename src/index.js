@@ -27,13 +27,13 @@ config();
 // Handle CLI arguments
 const args = process.argv.slice(2);
 if (args.includes('--version') || args.includes('-v')) {
-  console.log('1.1.0');
+  console.log('1.1.1');
   process.exit(0);
 }
 
 if (args.includes('--help') || args.includes('-h')) {
   console.log(`
-@aiondadotcom/mcp-salesforce v1.1.0
+@aiondadotcom/mcp-salesforce v1.1.1
 
 USAGE:
   npx -p @aiondadotcom/mcp-salesforce mcp-salesforce              # Start MCP server
@@ -77,7 +77,7 @@ class MCPSalesforceServer {
     this.server = new Server(
       {
         name: 'mcp-salesforce',
-        version: '1.1.0',
+        version: '1.1.1',
       },
       {
         capabilities: {

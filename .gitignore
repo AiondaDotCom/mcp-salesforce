@@ -95,7 +95,5 @@ jspm_packages/
 *.log
 .mcp-salesforce.json
 backups/
-test-backups-mcp/
-demo-backups/
-test-async-backups/
-test-mcp-async-backups/
+test-data/
+dist/*.tgz

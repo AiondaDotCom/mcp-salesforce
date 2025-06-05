@@ -4,6 +4,8 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { config } from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 // Import Salesforce client and tools
 import { SalesforceClient } from './salesforce/client.js';
@@ -258,7 +260,11 @@ class MCPSalesforceServer {
    */
   async handleTimeMachineQuery(args) {
     try {
-      const { operation, backupDirectory = './backups', ...operationArgs } = args;
+      // Resolve backup directory relative to project root, not current working directory
+      const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+      const defaultBackupDir = path.join(projectRoot, 'backups');
+      
+      const { operation, backupDirectory = defaultBackupDir, ...operationArgs } = args;
       const timeMachine = new SalesforceTimeMachine(backupDirectory);
 
       let result;

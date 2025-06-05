@@ -255,38 +255,38 @@ Here's a step-by-step walkthrough of the MCP Salesforce Server in action, showin
 ## 🛠️ Available Tools
 
 ### `salesforce_learn`
-**🧠 Lernt deine komplette Salesforce-Installation kennen** - Analysiert alle Objekte, Felder und Anpassungen einmalig und speichert diese Informationen lokal für intelligente Unterstützung.
+**🧠 Learns your complete Salesforce installation** - Analyzes all objects, fields and customizations once and stores this information locally for intelligent assistance.
 
 ```javascript
-// Einmalige Analyse der Salesforce-Installation
+// One-time analysis of the Salesforce installation
 {}
 
-// Erzwinge komplette Neuanalyse
+// Force complete re-analysis
 {
   "force_refresh": true,
   "detailed_relationships": true
 }
 ```
 
-**Warum wichtig?** 
-- Claude lernt deine Custom Objects wie "Zeitabrechnung__c", "Projekt__c", etc.
-- Erkennt alle Custom Fields und deren Datentypen
-- Bietet intelligente Vorschläge basierend auf deiner spezifischen Konfiguration
-- Einmalig ausführen, dann profitiert die KI dauerhaft davon
+**Why important?** 
+- Claude learns your Custom Objects like "TimeTracking__c", "Project__c", etc.
+- Recognizes all Custom Fields and their data types
+- Provides intelligent suggestions based on your specific configuration
+- Run once, then the AI benefits from it permanently
 
 ### `salesforce_installation_info`
-**📊 Überblick über deine gelernte Salesforce-Installation** - Zeigt verfügbare Objekte, Custom Fields und Anpassungen.
+**📊 Overview of your learned Salesforce installation** - Shows available objects, Custom Fields and customizations.
 
 ```javascript
-// Gesamtüberblick über die Installation
+// Complete overview of the installation
 {}
 
-// Details zu einem spezifischen Objekt
+// Details about a specific object
 {
-  "object_name": "Zeitabrechnung__c"
+  "object_name": "TimeTracking__c"
 }
 
-// Suche nach bestimmten Feldern
+// Search for specific fields
 {
   "field_search": "email",
   "show_custom_only": true
@@ -304,9 +304,9 @@ Execute SOQL queries against any Salesforce object.
 ```
 
 **🧠 Smart Learning Integration:** 
-- Warnt automatisch, wenn Installation noch nicht gelernt wurde
-- Schlägt verfügbare Objekte und Felder vor
-- Hilft bei korrekten API-Namen
+- Automatically warns when installation has not been learned yet
+- Suggests available objects and fields
+- Helps with correct API names
 
 ### `salesforce_create`  
 Create new records in any Salesforce object.
@@ -324,7 +324,7 @@ Create new records in any Salesforce object.
 }
 ```
 
-**🧠 Smart Context:** Zeigt automatisch erforderliche Felder für das gewählte Objekt an, wenn die Installation gelernt wurde.
+**🧠 Smart Context:** Automatically shows required fields for the selected object when the installation has been learned.
 
 ### `salesforce_update`
 Update existing records.
@@ -341,7 +341,7 @@ Update existing records.
 }
 ```
 
-**🧠 Smart Context:** Berücksichtigt Feld-Berechtigungen und Datentypen aus der gelernten Installation.
+**🧠 Smart Context:** Considers field permissions and data types from the learned installation.
 
 ### `salesforce_delete`
 Delete records (⚠️ permanent action).
@@ -368,19 +368,19 @@ Get schema information for objects and fields.
 ```
 
 ### `salesforce_backup`
-**💾 Umfassendes Backup-System für Salesforce** - Erstellt vollständige Backups aller Daten und Dateien mit detaillierter Wiederherstellungsinformation.
+**💾 Comprehensive Backup System for Salesforce** - Creates complete backups of all data and files with detailed recovery information.
 
 ```javascript
-// Vollständiges Backup erstellen
+// Create complete backup
 {}
 
-// Inkrementelles Backup seit bestimmtem Datum
+// Incremental backup since specific date
 {
   "backup_type": "incremental",
   "since_date": "2025-01-01T00:00:00Z"
 }
 
-// Backup mit spezifischen Optionen
+// Backup with specific options
 {
   "options": {
     "include_files": true,
@@ -391,56 +391,56 @@ Get schema information for objects and fields.
 }
 ```
 
-**Was wird gesichert:**
-- **📊 Alle Objektdaten** - Sämtliche queryable Objekte mit bis zu 20 Feldern pro Objekt
-- **📁 Modern Files** - ContentVersions mit vollständigen Metadaten
-- **📎 Legacy Attachments** - Klassische Anhänge mit korrekten Dateierweiterungen
-- **📄 Documents** - Folder-basierte Dokumente aus dem Legacy-System
-- **🏗️ Schema-Informationen** - Komplette Objektstrukturen und Beziehungen
-- **📋 Backup-Manifest** - Detaillierte Statistiken und Wiederherstellungsinfo
+**What is backed up:**
+- **📊 All Object Data** - All queryable objects with up to 20 fields per object
+- **📁 Modern Files** - ContentVersions with complete metadata
+- **📎 Legacy Attachments** - Classic attachments with correct file extensions
+- **📄 Documents** - Folder-based documents from the legacy system
+- **🏗️ Schema Information** - Complete object structures and relationships
+- **📋 Backup Manifest** - Detailed statistics and recovery information
 
-**Backup-Struktur:**
+**Backup Structure:**
 ```
 salesforce-backup-2025-06-04T16-16-35-660Z/
-├── metadata/           # Schema und Objektdefinitionen
-├── data/              # JSON-Daten aller Objekte
+├── metadata/           # Schema and object definitions
+├── data/              # JSON data of all objects
 ├── files/
-│   ├── content-versions/  # Moderne Dateien
-│   ├── attachments/       # Legacy Anhänge
-│   └── documents/         # Legacy Dokumente
-└── backup-manifest.json   # Backup-Übersicht
+│   ├── content-versions/  # Modern files
+│   ├── attachments/       # Legacy attachments
+│   └── documents/         # Legacy documents
+└── backup-manifest.json   # Backup overview
 ```
 
 ### `salesforce_backup_list`
-**📋 Verfügbare Backups anzeigen** - Übersicht über alle lokalen Backups mit Statistiken und Metadaten.
+**📋 Show Available Backups** - Overview of all local backups with statistics and metadata.
 
 ```javascript
-// Alle verfügbaren Backups auflisten
+// List all available backups
 {}
 
-// Details zu einem spezifischen Backup
+// Details about a specific backup
 {
   "backup_name": "salesforce-backup-2025-06-04T16-16-35-660Z"
 }
 ```
 
 ### `salesforce_time_machine`
-**⏰ Zeit-Reise durch Salesforce-Daten** - Analysiert Datenänderungen zwischen verschiedenen Backup-Zeitpunkten und ermöglicht gezielte Wiederherstellung.
+**⏰ Time Travel Through Salesforce Data** - Analyzes data changes between different backup time points and enables targeted recovery.
 
 ```javascript
-// Vergleiche aktuellen Zustand mit einem Backup
+// Compare current state with a backup
 {
   "backup_timestamp": "2025-06-04T16:16:35.660Z",
   "object_name": "Account"
 }
 
-// Zeige alle Änderungen seit einem bestimmten Backup
+// Show all changes since a specific backup
 {
   "backup_timestamp": "2025-06-04T16:16:35.660Z",
   "show_all_changes": true
 }
 
-// Detailanalyse für spezifische Datensätze
+// Detailed analysis for specific records
 {
   "backup_timestamp": "2025-06-04T16:16:35.660Z",
   "object_name": "Contact", 
@@ -448,12 +448,12 @@ salesforce-backup-2025-06-04T16-16-35-660Z/
 }
 ```
 
-**Time Machine Funktionen:**
-- **📊 Datenvergleich** - Zeigt Unterschiede zwischen Backup und aktuellem Zustand
-- **🔍 Änderungshistorie** - Welche Felder wurden wann geändert
-- **🗑️ Gelöschte Datensätze** - Findet Datensätze, die seit dem Backup gelöscht wurden
-- **📈 Wachstumsanalyse** - Statistische Auswertung der Datenentwicklung
-- **🎯 Gezielte Wiederherstellung** - Präzise Identifikation von Änderungen
+**Time Machine Features:**
+- **📊 Data Comparison** - Shows differences between backup and current state
+- **🔍 Change History** - Which fields were changed when
+- **🗑️ Deleted Records** - Finds records that were deleted since the backup
+- **📈 Growth Analysis** - Statistical evaluation of data development
+- **🎯 Targeted Recovery** - Precise identification of changes
 
 ### `salesforce_auth`
 Authenticate with Salesforce. Automatically detects if authentication is needed and handles OAuth flow.
@@ -482,79 +482,79 @@ This tool is **automatically suggested** when:
 
 ## 🧠 Smart Learning System
 
-### Warum ist das Learning wichtig?
+### Why is Learning Important?
 
-Jede Salesforce-Installation ist einzigartig mit:
-- **Custom Objects** wie "Zeitabrechnung__c", "Projekt__c", "Kundenbetreuung__c"
-- **Custom Fields** auf Standard-Objekten
-- **Spezifische Workflows** und Validierungsregeln
-- **Individuelle Datenstrukturen**
+Every Salesforce installation is unique with:
+- **Custom Objects** like "TimeTracking__c", "Project__c", "CustomerCare__c"
+- **Custom Fields** on standard objects
+- **Specific Workflows** and validation rules
+- **Individual Data Structures**
 
-Das normale Trainingsmodell der KI kennt nur Salesforce-Standardobjekte. Ohne Kenntnisse deiner spezifischen Installation kann die KI nicht intelligent assistieren.
+The AI's normal training model only knows standard Salesforce objects. Without knowledge of your specific installation, the AI cannot provide intelligent assistance.
 
-### Wie funktioniert das Learning?
+### How Does Learning Work?
 
-1. **Einmalige Analyse**: `salesforce_learn` analysiert deine komplette Installation
-2. **Lokale Dokumentation**: Alle Objekte, Felder und Beziehungen werden lokal gespeichert
-3. **Intelligente Unterstützung**: Claude kann dann präzise Vorschläge machen und komplexe Fragen beantworten
+1. **One-time Analysis**: `salesforce_learn` analyzes your complete installation
+2. **Local Documentation**: All objects, fields and relationships are stored locally
+3. **Intelligent Support**: Claude can then make precise suggestions and answer complex questions
 
-### Beispiel-Workflow:
+### Example Workflow:
 
 ```
-Du: "Gibt es eine Zeitabrechnung für Juli 2025?"
+You: "Are there any time tracking entries for July 2025?"
 
-Ohne Learning:
-❌ Claude: "Ich kenne kein Objekt namens 'Zeitabrechnung'"
+Without Learning:
+❌ Claude: "I don't know any object called 'TimeTracking'"
 
-Mit Learning:
-✅ Claude: "Ich prüfe das Objekt 'Zeitabrechnung__c' nach Einträgen für Juli 2025..."
-   Führt automatisch die richtige SOQL-Abfrage aus
+With Learning:
+✅ Claude: "I'm checking the 'TimeTracking__c' object for entries from July 2025..."
+   Automatically executes the correct SOQL query
 ```
 
-### Wann solltest du das Learning verwenden?
+### When Should You Use Learning?
 
-- **Beim ersten Setup** - Einmalig nach der Installation
-- **Bei größeren Änderungen** - Wenn neue Custom Objects hinzugefügt werden
-- **Bei Problemen** - Wenn Claude Objekte oder Felder nicht findet
+- **During initial setup** - Once after installation
+- **After major changes** - When new Custom Objects are added
+- **When having problems** - When Claude doesn't find objects or fields
 
-### Was wird gelernt?
+### What is Learned?
 
-- **Alle SObjects** (Standard und Custom)
-- **Alle Felder** mit Datentypen und Berechtigungen
-- **Beziehungen** zwischen Objekten
-- **Picklist-Werte** und Validierungsregeln
-- **Erforderliche Felder** für bessere Validation
+- **All SObjects** (Standard and Custom)
+- **All Fields** with data types and permissions
+- **Relationships** between objects
+- **Picklist Values** and validation rules
+- **Required Fields** for better validation
 
-**💡 Das Learning läuft nur einmal und macht dann alle weiteren Interaktionen viel intelligenter!**
+**💡 Learning runs only once and then makes all further interactions much more intelligent!**
 
 ## 💡 Usage Examples
 
-### 🚀 Erste Schritte nach der Installation
+### 🚀 First Steps After Installation
 
-1. **Authentifizierung**: Claude erkennt automatisch, wenn Authentifizierung benötigt wird
-2. **Learning starten**: 
+1. **Authentication**: Claude automatically detects when authentication is needed
+2. **Start Learning**: 
    ```
-   Du: "Lerne meine Salesforce-Installation kennen"
-   Claude: Verwendet automatisch das salesforce_learn Tool
+   You: "Learn my Salesforce installation"
+   Claude: Automatically uses the salesforce_learn tool
    ```
-3. **Installation erkunden**:
+3. **Explore Installation**:
    ```
-   Du: "Zeige mir einen Überblick über meine Salesforce-Installation"
-   Claude: Verwendet salesforce_installation_info für eine Zusammenfassung
+   You: "Show me an overview of my Salesforce installation"
+   Claude: Uses salesforce_installation_info for a summary
    ```
 
-### 🔍 Intelligente Abfragen mit gelernter Installation
-
-```
-Du: "Zeige mir alle Projekte aus diesem Jahr"
-Claude: Erkennt automatisch dein "Projekt__c" Custom Object und erstellt:
-SELECT Id, Name, StartDatum__c, Status__c FROM Projekt__c WHERE CALENDAR_YEAR(CreatedDate) = 2025
-```
+### 🔍 Intelligent Queries with Learned Installation
 
 ```
-Du: "Gibt es Zeitabrechnungen für Juli 2025?"
-Claude: Findet dein "Zeitabrechnung__c" Objekt und fragt:
-SELECT Id, Name, Monat__c, Stunden__c FROM Zeitabrechnung__c WHERE Monat__c = 'Juli 2025'
+You: "Show me all projects from this year"
+Claude: Automatically recognizes your "Project__c" Custom Object and creates:
+SELECT Id, Name, StartDate__c, Status__c FROM Project__c WHERE CALENDAR_YEAR(CreatedDate) = 2025
+```
+
+```
+You: "Are there any time tracking entries for July 2025?"
+Claude: Finds your "TimeTracking__c" object and queries:
+SELECT Id, Name, Month__c, Hours__c FROM TimeTracking__c WHERE Month__c = 'July 2025'
 ```
 
 ### Query Examples
@@ -599,91 +599,91 @@ The server automatically discovers custom objects:
 
 ### 🚀 Salesforce Backup System
 
-Das MCP Salesforce Server bietet ein **professionelles Backup-System**, das deine komplette Salesforce-Installation sichern kann:
+The MCP Salesforce Server offers a **professional backup system** that can secure your complete Salesforce installation:
 
-#### Was macht das Backup-System besonders?
+#### What Makes the Backup System Special?
 
-- **🎯 Vollständige Abdeckung**: Sichert alle drei Salesforce-Dateisysteme
+- **🎯 Complete Coverage**: Backs up all three Salesforce file systems
   - **Modern Files** (ContentDocument/ContentVersion) 
-  - **Legacy Attachments** (klassische Anhänge)
-  - **Documents** (folder-basierte Legacy-Dokumente)
+  - **Legacy Attachments** (classic attachments)
+  - **Documents** (folder-based legacy documents)
 
-- **📊 Intelligente Datenerfassung**: 
-  - Alle queryable Objekte (Standard + Custom)
-  - Bis zu 20 Felder pro Objekt für umfassende Datensicherung
-  - Automatische Filterung von Binary-Feldern
+- **📊 Intelligent Data Collection**: 
+  - All queryable objects (Standard + Custom)
+  - Up to 20 fields per object for comprehensive data backup
+  - Automatic filtering of binary fields
 
-- **⚡ Hochperformant**:
-  - Parallele Downloads mit konfigurierbarer Concurrency
-  - Retry-Logic mit exponential backoff
-  - Batch-Verarbeitung für große Datenmengen
+- **⚡ High Performance**:
+  - Parallel downloads with configurable concurrency
+  - Retry logic with exponential backoff
+  - Batch processing for large data volumes
 
-#### Backup erstellen
+#### Creating a Backup
 
 ```
-Du: "Erstelle ein Backup meiner Salesforce-Daten"
-Claude: Startet automatisch das salesforce_backup Tool
+You: "Create a backup of my Salesforce data"
+Claude: Automatically starts the salesforce_backup tool
 ```
 
-**Backup-Ergebnis:**
+**Backup Result:**
 ```
-✅ Backup erfolgreich erstellt!
-📊 Statistiken:
-- 7 Objekte gesichert
-- 1.247 Datensätze exportiert  
-- 6 Dateien heruntergeladen
-- 4.07 MB Gesamtgröße
-- Dauer: 23 Sekunden
+✅ Backup successfully created!
+📊 Statistics:
+- 7 objects backed up
+- 1,247 records exported  
+- 6 files downloaded
+- 4.07 MB total size
+- Duration: 23 seconds
 
-📁 Speicherort: /backups/salesforce-backup-2025-06-04T16-16-35-660Z/
+📁 Location: /backups/salesforce-backup-2025-06-04T16-16-35-660Z/
 ```
 
-#### Backup-Struktur
+#### Backup Structure
 
 ```
 salesforce-backup-2025-06-04T16-16-35-660Z/
-├── backup-manifest.json     # Backup-Übersicht mit Statistiken
+├── backup-manifest.json     # Backup overview with statistics
 ├── metadata/
-│   ├── objects-schema.json  # Alle Objektdefinitionen
-│   └── file-manifest.json   # Datei-Download-Protokoll
-├── data/                    # JSON-Daten aller Objekte
-│   ├── Account.json         # Account-Datensätze
-│   ├── Contact.json         # Contact-Datensätze
-│   ├── Opportunity.json     # Opportunity-Datensätze
-│   └── CustomObject__c.json # Custom Object Daten
-└── files/                   # Alle Salesforce-Dateien
-    ├── content-versions/    # Moderne Dateien (.pdf, .docx, etc.)
-    ├── attachments/         # Legacy Anhänge
-    └── documents/           # Legacy Dokumente
+│   ├── objects-schema.json  # All object definitions
+│   └── file-manifest.json   # File download protocol
+├── data/                    # JSON data of all objects
+│   ├── Account.json         # Account records
+│   ├── Contact.json         # Contact records
+│   ├── Opportunity.json     # Opportunity records
+│   └── CustomObject__c.json # Custom Object data
+└── files/                   # All Salesforce files
+    ├── content-versions/    # Modern files (.pdf, .docx, etc.)
+    ├── attachments/         # Legacy attachments
+    └── documents/           # Legacy documents
 ```
 
 ### ⏰ Time Machine Feature
 
-Die **Time Machine** ermöglicht es, durch die Zeit zu reisen und Datenänderungen zu analysieren:
+The **Time Machine** enables you to travel through time and analyze data changes:
 
-#### Hauptfunktionen
+#### Main Features
 
-- **🔍 Datenvergleich**: Vergleicht aktuellen Zustand mit historischen Backups
-- **📊 Änderungsanalyse**: Zeigt genau, welche Felder sich geändert haben
-- **🗑️ Gelöschte Datensätze**: Findet Datensätze, die seit dem Backup gelöscht wurden
-- **📈 Trend-Analyse**: Statistische Auswertung der Datenentwicklung
+- **🔍 Data Comparison**: Compares current state with historical backups
+- **📊 Change Analysis**: Shows exactly which fields have changed
+- **🗑️ Deleted Records**: Finds records that were deleted since the backup
+- **📈 Trend Analysis**: Statistical evaluation of data development
 
-#### Time Machine verwenden
+#### Using Time Machine
 
 ```
-Du: "Vergleiche die aktuellen Account-Daten mit dem Backup vom 4. Juni"
-Claude: Verwendet salesforce_time_machine für detaillierte Analyse
+You: "Compare the current Account data with the backup from June 4th"
+Claude: Uses salesforce_time_machine for detailed analysis
 ```
 
-**Beispiel-Ergebnis:**
+**Example Result:**
 ```
-⏰ Time Machine Analyse - Account Objekt
-📅 Backup: 2025-06-04T16:16:35.660Z vs. Aktuell
+⏰ Time Machine Analysis - Account Object
+📅 Backup: 2025-06-04T16:16:35.660Z vs. Current
 
-📊 Änderungen gefunden:
-• Geänderte Datensätze: 3
-• Neue Datensätze: 2  
-• Gelöschte Datensätze: 1
+📊 Changes found:
+• Modified records: 3
+• New records: 2  
+• Deleted records: 1
 
 🔍 Details:
 Account "Aionda GmbH" (001XX000003DHPF):
@@ -696,35 +696,35 @@ Account "TechCorp Ltd" (001XX000003DHPG):
 - LastModifiedDate: 2025-06-03 → 2025-06-04
 ```
 
-#### Praktische Anwendungsfälle
+#### Practical Use Cases
 
-1. **📋 Compliance & Audit**: Nachweis von Datenänderungen
-2. **🔧 Fehleranalyse**: "Was war vor dem Problem anders?"
-3. **📊 Datenqualität**: Überwachung von Datenintegrität
-4. **🚨 Change Management**: Kontrolle über kritische Änderungen
-5. **💡 Business Intelligence**: Trend-Analyse über Zeit
+1. **📋 Compliance & Audit**: Evidence of data changes
+2. **🔧 Error Analysis**: "What was different before the problem?"
+3. **📊 Data Quality**: Monitoring data integrity
+4. **🚨 Change Management**: Control over critical changes
+5. **💡 Business Intelligence**: Trend analysis over time
 
-### 🎯 Backup-Workflow Empfehlung
+### 🎯 Recommended Backup Workflow
 
 ```
-1. Erste Einrichtung:
-   Du: "Lerne meine Salesforce-Installation"
-   → Claude analysiert deine komplette Org
+1. Initial Setup:
+   You: "Learn my Salesforce installation"
+   → Claude analyzes your complete org
    
-2. Regelmäßige Backups:
-   Du: "Erstelle ein Backup"
-   → Claude sichert alle Daten und Dateien
+2. Regular Backups:
+   You: "Create a backup"
+   → Claude backs up all data and files
    
-3. Überwachung:
-   Du: "Zeige mir alle verfügbaren Backups"
-   → Claude listet Backup-Historie auf
+3. Monitoring:
+   You: "Show me all available backups"
+   → Claude lists backup history
    
-4. Analyse:
-   Du: "Was hat sich seit dem letzten Backup geändert?"
-   → Claude verwendet Time Machine für Vergleich
+4. Analysis:
+   You: "What has changed since the last backup?"
+   → Claude uses Time Machine for comparison
 ```
 
-**💡 Pro-Tipp**: Kombiniere Learning + Backup + Time Machine für maximale Salesforce-Kontrolle!
+**💡 Pro Tip**: Combine Learning + Backup + Time Machine for maximum Salesforce control!
 
 ## 🔒 Security
 

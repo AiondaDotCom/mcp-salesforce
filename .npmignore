@@ -1,0 +1,41 @@
+# Development and testing files
+test/
+test-*/
+demo-*/
+cache/
+backups/
+*.test.js
+test-*.js
+demo-*.js
+debug-*.js
+explore-*.js
+fix-*.js
+migrate-*.js
+minimal-test.js
+
+# Documentation that's not needed in package
+*.md
+!README.md
+!LICENSE
+
+# Development files
+.vscode/
+.env*
+.DS_Store
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDE files
+.idea/
+*.swp
+*.swo
+
+# OS files
+Thumbs.db
+ehthumbs.db
+
+# Temporary files
+tmp/
+temp/

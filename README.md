@@ -23,14 +23,57 @@ A **Model Context Protocol (MCP) server** that provides seamless integration wit
 ### Prerequisites
 
 - **Node.js 18+**
-- **macOS** (required for Keychain integration)
+- **macOS** (required for secure token storage)
 - **Salesforce Connected App** with OAuth configured
 
-### Installation
+### Installation Options
+
+#### 🎯 **Recommended: NPX Usage (No Installation Required)**
+
+Use NPX to run the MCP server without any permanent installation:
+
+```json
+{
+  "mcpServers": {
+    "salesforce": {
+      "command": "npx",
+      "args": ["@aiondadotcom/mcp-salesforce"],
+      "env": {
+        "SALESFORCE_CLIENT_ID": "your-client-id",
+        "SALESFORCE_CLIENT_SECRET": "your-client-secret",
+        "SALESFORCE_INSTANCE_URL": "https://yourorg.salesforce.com"
+      }
+    }
+  }
+}
+```
+
+**✅ Benefits of NPX Usage:**
+- 🔄 **Always Latest**: Automatically uses the latest published version
+- 💾 **No Disk Space**: No permanent installation required
+- 🛡️ **No Conflicts**: No global package conflicts
+- ⚡ **Easy Updates**: Just restart - gets latest version automatically
+- 📋 **Simple Config**: Copy-paste ready MCP configuration
+
+**NPX Command Line Usage:**
+```bash
+# Get version
+npx @aiondadotcom/mcp-salesforce --version
+
+# Get help
+npx @aiondadotcom/mcp-salesforce --help
+
+# Run OAuth setup
+npx @aiondadotcom/mcp-salesforce setup
+```
+
+#### 🔧 **Alternative: Development Setup**
+
+For development or customization:
 
 1. **Clone and install dependencies**:
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/AiondaDotCom/mcp-salesforce.git
    cd mcp-salesforce
    npm install
    ```
@@ -41,9 +84,11 @@ A **Model Context Protocol (MCP) server** that provides seamless integration wit
    # Edit .env with your Salesforce Connected App details
    ```
 
-3. **Add to Claude Desktop** (see [Configuration](#configuration) below)
+3. **Add to Claude Desktop** using local path (see [Configuration](#configuration) below)
 
-4. **🎯 Start Using**: That's it! Claude will automatically handle authentication when you first use any Salesforce tool.
+### 🎯 **Start Using**
+
+That's it! Claude will automatically handle authentication when you first use any Salesforce tool.
 
 **✨ No More Manual Setup!** 
 - No need to run `npm run setup`
@@ -57,7 +102,42 @@ A **Model Context Protocol (MCP) server** that provides seamless integration wit
 - Provides intelligent suggestions based on your specific setup
 - Context-aware assistance for complex Salesforce environments
 
-## 📸 Demo Screenshots
+## 📦 NPM Package Status
+
+✅ **Package Successfully Published!**
+
+The package `@aiondadotcom/mcp-salesforce` is now **live on NPM** and ready for use.
+
+### Using the Published Package
+
+NPX usage is now available for all users:
+
+```bash
+# Test the published package
+npx @aiondadotcom/mcp-salesforce --version
+npx @aiondadotcom/mcp-salesforce --help
+
+# Run OAuth setup
+npx @aiondadotcom/mcp-salesforce setup
+```
+
+### Publication Details
+
+- **Package Name**: `@aiondadotcom/mcp-salesforce`
+- **Version**: `1.0.0`
+- **Registry**: NPM Public Registry
+- **Organization**: `@aiondadotcom`
+- **Access**: Public
+
+**Status**: 
+- ✅ Package published to NPM
+- ✅ NPX compatibility verified 
+- ✅ MCP configuration ready
+- ✅ **Available for immediate use**
+
+🎉 All NPX examples in this README now work for end users worldwide!
+
+## 🔧 Configuration
 
 Here's a step-by-step walkthrough of the MCP Salesforce Server in action, showing a real-world use case of verifying and updating company address information:
 
@@ -110,7 +190,29 @@ LOG_LEVEL=info
 
 ### Claude Desktop Integration
 
-Add to your Claude Desktop MCP configuration:
+#### 🎯 **NPX Configuration (Recommended)**
+
+Add this to your Claude Desktop MCP configuration (`~/Library/Application Support/Claude/claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "salesforce": {
+      "command": "npx",
+      "args": ["@aiondadotcom/mcp-salesforce"],
+      "env": {
+        "SALESFORCE_CLIENT_ID": "your-client-id",
+        "SALESFORCE_CLIENT_SECRET": "your-client-secret", 
+        "SALESFORCE_INSTANCE_URL": "https://yourorg.salesforce.com"
+      }
+    }
+  }
+}
+```
+
+#### 🔧 **Development/Local Configuration**
+
+For development or customized installations:
 
 ```json
 {
@@ -127,6 +229,46 @@ Add to your Claude Desktop MCP configuration:
   }
 }
 ```
+
+#### 🌐 **VS Code MCP Configuration**
+
+For VS Code with MCP extension:
+
+```json
+{
+  "servers": {
+    "salesforce": {
+      "command": "npx",
+      "args": ["@aiondadotcom/mcp-salesforce"],
+      "env": {
+        "SALESFORCE_CLIENT_ID": "your-client-id",
+        "SALESFORCE_CLIENT_SECRET": "your-client-secret",
+        "SALESFORCE_INSTANCE_URL": "https://yourorg.salesforce.com"
+      }
+    }
+  }
+}
+```
+
+## 📸 Demo Screenshots
+
+Here's a step-by-step walkthrough of the MCP Salesforce Server in action, showing a real-world use case of verifying and updating company address information:
+
+### Step 1: Address Verification Request
+![Address Verification](docs/step1.png)
+*Claude checking if the Aionda GmbH account in Salesforce has the correct address by comparing it with their current website address*
+
+### Step 2: Address Comparison Results  
+![Address Analysis](docs/step2.png)
+*Claude identifying that the Salesforce address is outdated, showing detailed comparison between the current Salesforce data and the actual address from the company website*
+
+### Step 3: Automated Address Update
+![Address Update](docs/step3.png)
+*Claude successfully updating the Salesforce account with the correct current address, showing exactly which fields were changed*
+
+### Step 4: Verification in Salesforce
+![Salesforce Confirmation](docs/step4.png)
+*The updated account record in Salesforce showing the corrected address information is now accurate and up-to-date*
 
 ## 🛠️ Available Tools
 

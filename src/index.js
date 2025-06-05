@@ -22,6 +22,41 @@ import { TIME_MACHINE_TOOLS, SalesforceTimeMachine } from './tools/time_machine.
 // Load environment variables
 config();
 
+// Handle CLI arguments
+const args = process.argv.slice(2);
+if (args.includes('--version') || args.includes('-v')) {
+  console.log('1.0.0');
+  process.exit(0);
+}
+
+if (args.includes('--help') || args.includes('-h')) {
+  console.log(`
+@aiondadotcom/mcp-salesforce v1.0.0
+
+USAGE:
+  npx @aiondadotcom/mcp-salesforce              # Start MCP server
+  npx @aiondadotcom/mcp-salesforce setup       # Run setup
+  
+ENVIRONMENT VARIABLES:
+  SALESFORCE_CLIENT_ID      - OAuth Client ID
+  SALESFORCE_CLIENT_SECRET  - OAuth Client Secret  
+  SALESFORCE_INSTANCE_URL   - Salesforce instance URL
+  
+DOCUMENTATION:
+  https://github.com/AiondaDotCom/mcp-salesforce
+`);
+  process.exit(0);
+}
+
+// Handle setup command
+if (args.includes('setup')) {
+  import('./auth/oauth.js').then(({ OAuth }) => {
+    const oauth = new OAuth();
+    oauth.startSetup();
+  });
+  process.exit(0);
+}
+
 class MCPSalesforceServer {
   constructor() {
     this.server = new Server(

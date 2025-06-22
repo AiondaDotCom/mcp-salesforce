@@ -294,13 +294,21 @@ export class OAuthFlow {
       }
 
       
-      // Open browser for authentication
+      // Open browser for authentication (unless disabled for testing)
       const authUrl = this.getAuthorizationUrl();
-      logger.log(`🌐 Opening browser for authentication: ${authUrl}`);
+      logger.log(`🌐 Authentication URL: ${authUrl}`);
       
-      open(authUrl).catch(error => {
-        logger.warn('⚠️ Failed to open browser automatically:', error.message);
-      });
+      // Check if browser opening is disabled (for testing)
+      if (process.env.NODE_ENV !== 'test' && process.env.DISABLE_BROWSER_OPEN !== 'true') {
+        logger.log('🌐 Opening browser for authentication...');
+        open(authUrl).catch(error => {
+          logger.warn('⚠️ Failed to open browser automatically:', error.message);
+          logger.log('💡 Please open the following URL manually:', authUrl);
+        });
+      } else {
+        logger.log('🚫 Browser opening disabled (test mode or DISABLE_BROWSER_OPEN=true)');
+        logger.log('💡 If this were not a test, would open:', authUrl);
+      }
     });
   }
 

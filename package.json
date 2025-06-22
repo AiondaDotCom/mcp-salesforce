@@ -19,7 +19,9 @@
     "status": "node bin/status.js",
     "config-help": "node bin/config-helper.js",
     "dev": "node --watch src/index.js",
-    "test": "node --test",
+    "test": "NODE_ENV=test DISABLE_BROWSER_OPEN=true node test/learning-system-test.js && NODE_ENV=test DISABLE_BROWSER_OPEN=true node test/env-variables-unit-test.js",
+    "test:env": "NODE_ENV=test DISABLE_BROWSER_OPEN=true node test/env-variables-unit-test.js",
+    "test:learning": "NODE_ENV=test DISABLE_BROWSER_OPEN=true node test/learning-system-test.js",
     "lint": "eslint src/ bin/"
   },
   "keywords": [

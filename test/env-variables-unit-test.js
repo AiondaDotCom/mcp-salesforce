@@ -111,7 +111,15 @@ const runAsyncTest = async (name, test) => {
     
     try {
       const { handleReauth } = await import('../src/tools/auth.js');
-      const result = await handleReauth({ force: true });
+      
+      // Create a promise that will timeout after 2 seconds
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Test timeout')), 2000)
+      );
+      
+      const authPromise = handleReauth({ force: true });
+      
+      const result = await Promise.race([authPromise, timeoutPromise]);
       
       const hasValidation = !result.success && 
                            result.error && 
@@ -127,6 +135,12 @@ const runAsyncTest = async (name, test) => {
       }
       
       return hasValidation;
+    } catch (error) {
+      if (error.message.includes('Test timeout')) {
+        console.log('   Test timed out - auth tool likely attempted real authentication');
+        return false;
+      }
+      throw error;
     } finally {
       // Restore environment variables
       Object.assign(process.env, tempEnv);

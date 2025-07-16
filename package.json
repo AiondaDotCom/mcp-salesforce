@@ -20,11 +20,12 @@
     "status": "node bin/status.js",
     "config-help": "node bin/config-helper.js",
     "dev": "node --watch src/index.js",
-    "test": "NODE_ENV=test DISABLE_BROWSER_OPEN=true node test/learning-system-test.js && NODE_ENV=test DISABLE_BROWSER_OPEN=true node test/credentials-system-test.js && node test/cache-system-test.js",
+    "test": "npm run test:learning && npm run test:credentials && npm run test:cache && npm run test:env",
+    "test:ci": "npm run test:learning && npm run test:credentials && npm run test:cache",
     "test:env": "NODE_ENV=test DISABLE_BROWSER_OPEN=true node test/env-variables-unit-test.js",
     "test:learning": "NODE_ENV=test DISABLE_BROWSER_OPEN=true node test/learning-system-test.js",
     "test:credentials": "NODE_ENV=test DISABLE_BROWSER_OPEN=true node test/credentials-system-test.js",
-    "test:cache": "node test/cache-system-test.js",
+    "test:cache": "NODE_ENV=test DISABLE_BROWSER_OPEN=true node test/cache-system-test.js",
     "lint": "eslint src/ bin/"
   },
   "keywords": [

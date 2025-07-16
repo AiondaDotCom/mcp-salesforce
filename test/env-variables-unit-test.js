@@ -100,111 +100,75 @@ const runAsyncTest = async (name, test) => {
     return clientIdMatch && instanceUrlMatch;
   });
 
-  // Test 2: Auth tool environment variable validation
-  await runAsyncTest('Auth tool validates environment variables', async () => {
-    // Clear environment variables to test validation
-    const tempEnv = {};
-    ['SALESFORCE_CLIENT_ID', 'SALESFORCE_CLIENT_SECRET', 'SALESFORCE_INSTANCE_URL'].forEach(key => {
-      tempEnv[key] = process.env[key];
-      delete process.env[key];
-    });
+  // Test 2: Auth tool validates stored credentials (not environment variables)
+  await runAsyncTest('Auth tool validates stored credentials', async () => {
+    // Import auth tool and file storage
+    const { handleReauth } = await import('../src/tools/auth.js');
+    const { FileStorageManager } = await import('../src/auth/file-storage.js');
+    
+    // Create a temporary storage manager and clear any existing credentials
+    const fileStorage = new FileStorageManager();
+    const originalTokenFile = fileStorage.tokenFilePath;
     
     try {
-      const { handleReauth } = await import('../src/tools/auth.js');
+      // Use a test token file path
+      fileStorage.tokenFilePath = originalTokenFile.replace('.mcp-salesforce.json', '.mcp-salesforce-test-credentials.json');
       
-      // Create a promise that will timeout after 2 seconds
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Test timeout')), 2000)
-      );
+      // Clear the test file
+      await fileStorage.clearTokens();
       
-      const authPromise = handleReauth({ force: true });
-      
-      const result = await Promise.race([authPromise, timeoutPromise]);
+      // Test that auth tool properly detects missing credentials
+      const result = await handleReauth({ force: true });
       
       const hasValidation = !result.success && 
                            result.error && 
-                           result.error.includes('Missing required environment variables');
+                           result.error.includes('No Salesforce credentials found');
       
-      if (hasValidation && result.details && result.details.missingVariables) {
-        const expectedMissing = ['SALESFORCE_CLIENT_ID', 'SALESFORCE_CLIENT_SECRET', 'SALESFORCE_INSTANCE_URL'];
-        const actualMissing = result.details.missingVariables;
-        const allDetected = expectedMissing.every(varName => actualMissing.includes(varName));
-        
-        console.log(`   Missing variables detected: ${actualMissing.join(', ')}`);
-        return allDetected;
+      if (hasValidation && result.details && result.details.setupRequired) {
+        console.log('   Correctly detected missing credentials');
+        return true;
+      }
+      
+      if (!hasValidation) {
+        console.log('   Expected error about missing credentials, got:', result);
       }
       
       return hasValidation;
-    } catch (error) {
-      if (error.message.includes('Test timeout')) {
-        console.log('   Test timed out - auth tool likely attempted real authentication');
-        return false;
-      }
-      throw error;
     } finally {
-      // Restore environment variables
-      Object.assign(process.env, tempEnv);
+      // Clean up test file
+      try {
+        await fileStorage.clearTokens();
+      } catch {}
+      // Restore original path
+      fileStorage.tokenFilePath = originalTokenFile;
     }
   });
 
-  // Test 3: Auth tool with valid environment variables (with timeout)
-  await runAsyncTest('Auth tool uses environment variables', async () => {
-    const { handleReauth } = await import('../src/tools/auth.js');
-    
-    // Create a promise that will timeout after 5 seconds
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Test timeout - likely trying real OAuth')), 5000)
-    );
-    
-    const authPromise = (async () => {
-      try {
-        const result = await handleReauth({ force: true });
-        
-        // It should not fail with "Missing required environment variables"
-        const noMissingVarError = !result.error || !result.error.includes('Missing required environment variables');
-        
-        if (!noMissingVarError) {
-          console.log(`   Unexpected error: ${result.error}`);
-        }
-        
-        return { success: noMissingVarError, fromResult: true };
-      } catch (error) {
-        // OAuth errors are expected since we don't have real credentials
-        // but missing environment variable errors are not
-        const isOAuthError = error.message.includes('oauth') || 
-                            error.message.includes('authentication') ||
-                            error.message.includes('invalid_client') ||
-                            error.message.includes('OAuth') ||
-                            error.message.includes('ENOTFOUND') ||
-                            error.message.includes('fetch');
-        
-        if (isOAuthError) {
-          console.log(`   Expected OAuth/Network error (environment variables were read): ${error.message.substring(0, 100)}`);
-          return { success: true, fromError: true };
-        }
-        
-        const isMissingVarError = error.message.includes('Missing required environment variables');
-        
-        if (isMissingVarError) {
-          console.log(`   Environment variables not properly read: ${error.message}`);
-          return { success: false, fromError: true };
-        }
-        
-        // Other errors are also acceptable as long as they're not about missing env vars
-        console.log(`   Other error (environment variables were read): ${error.message.substring(0, 100)}`);
-        return { success: true, fromError: true };
-      }
-    })();
+  // Test 3: TokenManager works with environment variables
+  await runAsyncTest('TokenManager works with environment variables', async () => {
+    // Test that TokenManager can be initialized with environment variables
+    const { TokenManager } = await import('../src/auth/token-manager.js');
     
     try {
-      const result = await Promise.race([authPromise, timeoutPromise]);
-      return result.success;
-    } catch (error) {
-      if (error.message.includes('timeout')) {
-        console.log(`   Test timed out - auth tool likely attempted real OAuth (environment variables were read)`);
-        return true;
+      const tokenManager = new TokenManager(
+        process.env.SALESFORCE_CLIENT_ID,
+        process.env.SALESFORCE_CLIENT_SECRET,
+        process.env.SALESFORCE_INSTANCE_URL
+      );
+      
+      // Should be able to create instance without throwing
+      const isInitialized = tokenManager.clientId === testEnvVars.SALESFORCE_CLIENT_ID &&
+                           tokenManager.clientSecret === testEnvVars.SALESFORCE_CLIENT_SECRET &&
+                           tokenManager.instanceUrl === testEnvVars.SALESFORCE_INSTANCE_URL;
+      
+      if (!isInitialized) {
+        console.log('   TokenManager not properly initialized with environment variables');
       }
-      throw error;
+      
+      return isInitialized;
+    } catch (error) {
+      console.log(`   TokenManager initialization failed: ${error.message}`);
+      return false;
     }
   });
 

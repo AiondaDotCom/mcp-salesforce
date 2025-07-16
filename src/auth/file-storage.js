@@ -154,7 +154,13 @@ export class FileStorageManager {
     
     // Use the fixed schema to ensure all fields are present
     for (const [key, defaultValue] of Object.entries(FileStorageManager.CONFIG_SCHEMA)) {
-      result[key] = existingData.hasOwnProperty(key) ? existingData[key] : defaultValue;
+      // Only use defaultValue if the key doesn't exist OR if the value is explicitly null/undefined
+      // This prevents overwriting valid values with null from the schema
+      if (existingData.hasOwnProperty(key) && existingData[key] !== null && existingData[key] !== undefined) {
+        result[key] = existingData[key];
+      } else {
+        result[key] = defaultValue;
+      }
     }
     
     return result;
@@ -312,14 +318,35 @@ export class FileStorageManager {
   }
 
   /**
-   * Clear stored tokens
+   * Clear stored tokens (but keep credentials)
    */
   async clearTokens() {
     try {
-      await fs.unlink(this.tokenFilePath);
-      logger.log('✅ Tokens cleared successfully');
+      const existingData = await this.getAllData();
+      
+      // Create complete structure with cleared tokens but preserved credentials
+      const clearedData = this.getCompleteDataStructure({
+        ...existingData,
+        // Clear only token-related fields
+        access_token: null,
+        refresh_token: null,
+        expires_at: null,
+        instance_url: null,
+        stored_at: null
+      });
+
+      // Write updated data to file with restricted permissions (600 = rw-------)
+      await fs.writeFile(this.tokenFilePath, JSON.stringify(clearedData, null, 2), { mode: 0o600 });
+      
+      // Explicitly set file permissions to ensure security
+      await fs.chmod(this.tokenFilePath, 0o600);
+      
+      logger.log('✅ Tokens cleared successfully (credentials preserved)');
     } catch (error) {
-      if (error.code !== 'ENOENT') {
+      if (error.code === 'ENOENT') {
+        // File doesn't exist, that's fine
+        logger.log('✅ No tokens to clear');
+      } else {
         throw new Error(`Failed to clear tokens: ${error.message}`);
       }
     }

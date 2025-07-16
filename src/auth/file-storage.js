@@ -47,7 +47,23 @@ export class FileStorageManager {
     try {
       const data = await this.getAllData();
       
-      if (!data || !data.clientId || !data.clientSecret || !data.instanceUrl) {
+      // Check if we have valid tokens and instance URL (credentials might be null but tokens exist)
+      if (!data) {
+        return null;
+      }
+
+      // If we have tokens but no credentials, use placeholder values
+      if (data.access_token && data.refresh_token && data.instance_url) {
+        return {
+          clientId: data.clientId || 'token_based_auth',
+          clientSecret: data.clientSecret || 'token_based_auth',
+          instanceUrl: data.instanceUrl || data.instance_url,
+          credentialsStoredAt: data.credentialsStoredAt || data.stored_at
+        };
+      }
+
+      // Traditional credentials check
+      if (!data.clientId || !data.clientSecret || !data.instanceUrl) {
         return null;
       }
 
@@ -102,13 +118,13 @@ export class FileStorageManager {
     try {
       const existingData = await this.getAllData();
       
-      // Ensure credentials are preserved
+      // Ensure credentials are preserved - they should never be overwritten
       const tokenData = {
-        // Keep existing credentials if they exist
-        clientId: existingData.clientId || null,
-        clientSecret: existingData.clientSecret || null,
+        // Keep existing credentials if they exist, otherwise preserve what we have
+        clientId: existingData.clientId,
+        clientSecret: existingData.clientSecret,
         instanceUrl: existingData.instanceUrl || tokens.instance_url,
-        credentialsStoredAt: existingData.credentialsStoredAt || null,
+        credentialsStoredAt: existingData.credentialsStoredAt,
         
         // Update tokens
         access_token: tokens.access_token,
@@ -117,6 +133,14 @@ export class FileStorageManager {
         instance_url: tokens.instance_url,
         stored_at: new Date().toISOString()
       };
+      
+      // Validate that we're not overwriting credentials with null
+      if (existingData.clientId && !tokenData.clientId) {
+        throw new Error('BUG: Attempted to overwrite clientId with null');
+      }
+      if (existingData.clientSecret && !tokenData.clientSecret) {
+        throw new Error('BUG: Attempted to overwrite clientSecret with null');
+      }
 
       // Write tokens to file with restricted permissions (600 = rw-------)
       await fs.writeFile(this.tokenFilePath, JSON.stringify(tokenData, null, 2), { mode: 0o600 });

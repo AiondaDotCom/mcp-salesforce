@@ -25,7 +25,34 @@ export async function handleReauth(args) {
     const fileStorage = new FileStorageManager();
     const credentials = await fileStorage.getCredentials();
 
+    // Check if we have existing tokens even without credentials
     if (!credentials) {
+      const tokens = await fileStorage.getTokens();
+      if (tokens && tokens.access_token && tokens.refresh_token) {
+        // We have tokens but no credentials, try to use tokens directly
+        const tokenManager = new TokenManager(null, null, tokens.instance_url);
+        tokenManager.currentTokens = tokens;
+        
+        // Test if tokens are still valid
+        const testResult = await tokenManager.testTokens();
+        if (testResult.valid) {
+          return {
+            success: true,
+            message: 'Already authenticated with valid tokens',
+            details: {
+              authenticated: true,
+              instanceUrl: tokens.instance_url,
+              storedAt: tokens.stored_at
+            },
+            nextSteps: [
+              'Your MCP Salesforce tools should now work normally',
+              'Tokens are stored securely in your home directory with 600 permissions',
+              'They will auto-refresh before expiration'
+            ]
+          };
+        }
+      }
+      
       return {
         success: false,
         error: 'No Salesforce credentials found. Please run the salesforce_setup tool first to configure your credentials.',

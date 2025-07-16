@@ -19,13 +19,14 @@ export class FileStorageManager {
     try {
       const existingData = await this.getAllData();
       
-      const credentialData = {
+      // Create complete structure with updated credentials
+      const credentialData = this.getCompleteDataStructure({
         ...existingData,
         clientId: credentials.clientId,
         clientSecret: credentials.clientSecret,
         instanceUrl: credentials.instanceUrl,
         credentialsStoredAt: new Date().toISOString()
-      };
+      });
 
       // Write credentials to file with restricted permissions (600 = rw-------)
       await fs.writeFile(this.tokenFilePath, JSON.stringify(credentialData, null, 2), { mode: 0o600 });
@@ -95,16 +96,119 @@ export class FileStorageManager {
   }
 
   /**
+   * Fixed configuration schema - all fields that the config file needs
+   * This ensures consistency and prevents dynamic field additions/removals
+   */
+  static CONFIG_SCHEMA = {
+    // OAuth/API Credentials
+    clientId: null,
+    clientSecret: null,
+    instanceUrl: null,
+    credentialsStoredAt: null,
+    
+    // OAuth Tokens
+    access_token: null,
+    refresh_token: null,
+    expires_at: null,
+    instance_url: null,
+    stored_at: null
+  };
+
+  /**
+   * Get the complete data structure with all required fields
+   * @param {Object} existingData - Existing data to merge
+   * @returns {Object} Complete data structure with all schema fields
+   */
+  getCompleteDataStructure(existingData = {}) {
+    const result = {};
+    
+    // Use the fixed schema to ensure all fields are present
+    for (const [key, defaultValue] of Object.entries(FileStorageManager.CONFIG_SCHEMA)) {
+      result[key] = existingData.hasOwnProperty(key) ? existingData[key] : defaultValue;
+    }
+    
+    return result;
+  }
+
+  /**
+   * Validate that data conforms to the schema
+   * @param {Object} data - Data to validate
+   * @returns {Object} Validation result
+   */
+  validateSchema(data) {
+    const extraFields = [];
+    const missingFields = [];
+    
+    // Check for extra fields not in schema
+    for (const key of Object.keys(data)) {
+      if (!FileStorageManager.CONFIG_SCHEMA.hasOwnProperty(key)) {
+        extraFields.push(key);
+      }
+    }
+    
+    // Check for missing required fields (none are truly required, but all should be present)
+    for (const key of Object.keys(FileStorageManager.CONFIG_SCHEMA)) {
+      if (!data.hasOwnProperty(key)) {
+        missingFields.push(key);
+      }
+    }
+    
+    return {
+      isValid: extraFields.length === 0 && missingFields.length === 0,
+      extraFields,
+      missingFields
+    };
+  }
+
+  /**
+   * Create a new configuration file with proper schema
+   * @param {Object} initialData - Initial data to populate
+   * @returns {Object} Complete configuration object
+   */
+  async createConfigFile(initialData = {}) {
+    const configData = this.getCompleteDataStructure(initialData);
+    
+    // Validate schema
+    const validation = this.validateSchema(configData);
+    if (!validation.isValid) {
+      throw new Error(`Schema validation failed: ${JSON.stringify(validation)}`);
+    }
+    
+    // Write to file
+    await fs.writeFile(this.tokenFilePath, JSON.stringify(configData, null, 2), { mode: 0o600 });
+    await fs.chmod(this.tokenFilePath, 0o600);
+    
+    console.log('✅ Configuration file created with complete schema');
+    return configData;
+  }
+
+  /**
    * Get all data from file (credentials and tokens)
-   * @returns {Object} All data or empty object if not found
+   * @returns {Object} All data with complete schema
    */
   async getAllData() {
     try {
       const data = await fs.readFile(this.tokenFilePath, 'utf8');
-      return JSON.parse(data);
+      const parsedData = JSON.parse(data);
+      
+      // Always return complete structure and validate
+      const completeData = this.getCompleteDataStructure(parsedData);
+      const validation = this.validateSchema(completeData);
+      
+      if (!validation.isValid) {
+        console.warn('⚠️  Configuration file has schema issues:', validation);
+        console.warn('   Auto-fixing schema...');
+        
+        // Auto-fix by recreating with proper schema
+        return await this.createConfigFile(parsedData);
+      }
+      
+      return completeData;
     } catch (error) {
       if (error.code === 'ENOENT') {
-        return {};
+        // Create new file with complete structure
+        console.log('📁 Creating new configuration file...');
+        return await this.createConfigFile();
       }
       throw error;
     }
@@ -118,29 +222,16 @@ export class FileStorageManager {
     try {
       const existingData = await this.getAllData();
       
-      // Ensure credentials are preserved - they should never be overwritten
-      const tokenData = {
-        // Keep existing credentials if they exist, otherwise preserve what we have
-        clientId: existingData.clientId,
-        clientSecret: existingData.clientSecret,
-        instanceUrl: existingData.instanceUrl || tokens.instance_url,
-        credentialsStoredAt: existingData.credentialsStoredAt,
-        
-        // Update tokens
+      // Create complete structure with updated tokens
+      const tokenData = this.getCompleteDataStructure({
+        ...existingData,
+        // Update only token-related fields
         access_token: tokens.access_token,
         refresh_token: tokens.refresh_token,
         expires_at: tokens.expires_at || null,
         instance_url: tokens.instance_url,
         stored_at: new Date().toISOString()
-      };
-      
-      // Validate that we're not overwriting credentials with null
-      if (existingData.clientId && !tokenData.clientId) {
-        throw new Error('BUG: Attempted to overwrite clientId with null');
-      }
-      if (existingData.clientSecret && !tokenData.clientSecret) {
-        throw new Error('BUG: Attempted to overwrite clientSecret with null');
-      }
+      });
 
       // Write tokens to file with restricted permissions (600 = rw-------)
       await fs.writeFile(this.tokenFilePath, JSON.stringify(tokenData, null, 2), { mode: 0o600 });

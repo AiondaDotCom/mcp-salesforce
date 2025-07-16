@@ -157,7 +157,7 @@ export async function handleReauth(args) {
         error: 'Invalid Salesforce Connected App credentials',
         details: {
           reason: 'Client ID or Client Secret is incorrect',
-          suggestion: 'Please verify your SALESFORCE_CLIENT_ID and SALESFORCE_CLIENT_SECRET in MCP configuration'
+          suggestion: 'Please verify your Client ID and Client Secret in ~/.mcp-salesforce.json configuration'
         }
       };
     }

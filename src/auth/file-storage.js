@@ -96,6 +96,30 @@ export class FileStorageManager {
   }
 
   /**
+   * Get API configuration from config file
+   * @returns {Object} API configuration with defaults
+   */
+  async getApiConfig() {
+    try {
+      const data = await this.getAllData();
+      return {
+        apiVersion: data.apiVersion || '58.0',
+        callbackPort: data.callbackPort || 8080,
+        timeout: data.timeout || 30000,
+        callbackUrl: data.callbackUrl || null
+      };
+    } catch (error) {
+      // Return defaults if config file doesn't exist
+      return {
+        apiVersion: '58.0',
+        callbackPort: 8080,
+        timeout: 30000,
+        callbackUrl: null
+      };
+    }
+  }
+
+  /**
    * Fixed configuration schema - all fields that the config file needs
    * This ensures consistency and prevents dynamic field additions/removals
    */
@@ -111,7 +135,13 @@ export class FileStorageManager {
     refresh_token: null,
     expires_at: null,
     instance_url: null,
-    stored_at: null
+    stored_at: null,
+    
+    // API Configuration
+    apiVersion: null,
+    callbackPort: null,
+    timeout: null,
+    callbackUrl: null
   };
 
   /**

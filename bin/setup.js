@@ -2,6 +2,7 @@
 
 import { config } from 'dotenv';
 import { TokenManager } from '../src/auth/token-manager.js';
+import { FileStorageManager } from '../src/auth/file-storage.js';
 import { readFile } from 'fs/promises';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -14,11 +15,7 @@ const __dirname = dirname(__filename);
 
 class SetupTool {
   constructor() {
-    this.requiredEnvVars = [
-      'SALESFORCE_CLIENT_ID',
-      'SALESFORCE_CLIENT_SECRET', 
-      'SALESFORCE_INSTANCE_URL'
-    ];
+    this.fileStorage = new FileStorageManager();
   }
 
   /**
@@ -39,34 +36,38 @@ class SetupTool {
   }
 
   /**
-   * Validate required environment variables
+   * Validate required configuration
    */
-  validateEnvironment() {
-    console.log('🔍 Checking environment configuration...');
+  async validateConfiguration() {
+    console.log('🔍 Checking configuration...');
     
-    const missing = [];
-    const config = {};
-
-    for (const envVar of this.requiredEnvVars) {
-      const value = process.env[envVar];
-      if (!value) {
-        missing.push(envVar);
-      } else {
-        config[envVar] = value;
-        console.log(`✅ ${envVar}: ${this.maskSensitive(envVar, value)}`);
+    try {
+      const credentials = await this.fileStorage.getCredentials();
+      
+      if (!credentials) {
+        console.error('\n❌ No Salesforce credentials found in ~/.mcp-salesforce.json');
+        console.error('📝 Please run the salesforce_setup tool first to configure your credentials.');
+        process.exit(1);
       }
-    }
 
-    if (missing.length > 0) {
-      console.error('\n❌ Missing required environment variables:');
-      missing.forEach(envVar => console.error(`   - ${envVar}`));
-      console.error('\n📝 Please set these in your .env file or environment.');
-      console.error('💡 Copy .env.example to .env and fill in your values.\n');
+      const { clientId, clientSecret, instanceUrl } = credentials;
+      
+      if (!clientId || !clientSecret || !instanceUrl) {
+        console.error('\n❌ Incomplete credentials in ~/.mcp-salesforce.json');
+        console.error('📝 Please run the salesforce_setup tool to reconfigure your credentials.');
+        process.exit(1);
+      }
+
+      console.log(`✅ Client ID: ${this.maskSensitive('CLIENT_ID', clientId)}`);
+      console.log(`✅ Client Secret: ${this.maskSensitive('CLIENT_SECRET', clientSecret)}`);
+      console.log(`✅ Instance URL: ${instanceUrl}`);
+      
+      console.log('✅ Configuration valid\n');
+      return credentials;
+    } catch (error) {
+      console.error(`\n❌ Error reading configuration: ${error.message}`);
       process.exit(1);
     }
-
-    console.log('✅ Environment configuration valid\n');
-    return config;
   }
 
   /**
@@ -145,11 +146,11 @@ class SetupTool {
   /**
    * Test the stored tokens by making an API call
    */
-  async testAuthentication(clientId, clientSecret, instanceUrl) {
+  async testAuthentication(credentials) {
     console.log('\n🧪 Testing authentication...');
     
     try {
-      const tokenManager = new TokenManager(clientId, clientSecret, instanceUrl);
+      const tokenManager = new TokenManager(credentials.clientId, credentials.clientSecret, credentials.instanceUrl);
       await tokenManager.initialize();
       
       const result = await tokenManager.testTokens();
@@ -188,17 +189,13 @@ class SetupTool {
     console.log('  "mcpServers": {');
     console.log('    "salesforce": {');
     console.log('      "command": "node",');
-    console.log(`      "args": ["${join(process.cwd(), 'src/index.js')}"],`);
-    console.log('      "env": {');
-    console.log(`        "SALESFORCE_CLIENT_ID": "${process.env.SALESFORCE_CLIENT_ID}",`);
-    console.log(`        "SALESFORCE_CLIENT_SECRET": "${process.env.SALESFORCE_CLIENT_SECRET}",`);
-    console.log(`        "SALESFORCE_INSTANCE_URL": "${process.env.SALESFORCE_INSTANCE_URL}"`);
-    console.log('      }');
+    console.log(`      "args": ["${join(process.cwd(), 'src/index.js')}"]`);
     console.log('    }');
     console.log('  }');
     console.log('}```\n');
     
     console.log('📚 For more information, see the documentation in the docs/ folder.');
+    console.log('🔧 Your credentials are stored securely in ~/.mcp-salesforce.json');
   }
 
   /**
@@ -219,29 +216,25 @@ class SetupTool {
     try {
       this.displayWelcome();
       
-      // Validate environment
-      const config = this.validateEnvironment();
+      // Validate configuration
+      const credentials = await this.validateConfiguration();
       
       // Test connectivity
-      const connected = await this.testConnectivity(config.SALESFORCE_INSTANCE_URL);
+      const connected = await this.testConnectivity(credentials.instanceUrl);
       if (!connected) {
-        console.error('\n❌ Cannot connect to Salesforce instance. Please check your SALESFORCE_INSTANCE_URL.');
+        console.error('\n❌ Cannot connect to Salesforce instance. Please check your instance URL.');
         process.exit(1);
       }
       
       // Perform OAuth flow
       await this.performOAuth(
-        config.SALESFORCE_CLIENT_ID,
-        config.SALESFORCE_CLIENT_SECRET,
-        config.SALESFORCE_INSTANCE_URL
+        credentials.clientId,
+        credentials.clientSecret,
+        credentials.instanceUrl
       );
       
       // Test authentication
-      const authValid = await this.testAuthentication(
-        config.SALESFORCE_CLIENT_ID,
-        config.SALESFORCE_CLIENT_SECRET,
-        config.SALESFORCE_INSTANCE_URL
-      );
+      const authValid = await this.testAuthentication(credentials);
       
       if (!authValid) {
         console.error('\n❌ Authentication test failed. Please try running setup again.');
@@ -257,7 +250,7 @@ class SetupTool {
     } catch (error) {
       console.error(`\n💥 Setup failed: ${error.message}`);
       console.error('\n🔧 Troubleshooting:');
-      console.error('1. Check your .env file configuration');
+      console.error('1. Check your ~/.mcp-salesforce.json configuration');
       console.error('2. Verify your Salesforce Connected App settings');
       console.error('3. Ensure you have the correct permissions');
       console.error('4. Check your network connection\n');

@@ -2,35 +2,32 @@
 
 import { config } from 'dotenv';
 import { TokenManager } from '../src/auth/token-manager.js';
+import { FileStorageManager } from '../src/auth/file-storage.js';
 
 // Load environment variables
 config();
 
 class StatusChecker {
   constructor() {
-    this.requiredEnvVars = [
-      'SALESFORCE_CLIENT_ID',
-      'SALESFORCE_CLIENT_SECRET', 
-      'SALESFORCE_INSTANCE_URL'
-    ];
+    this.fileStorage = new FileStorageManager();
   }
 
   async checkStatus() {
     console.log('🔍 MCP Salesforce Server Status Check');
     console.log('=====================================\n');
 
-    // Check environment
-    console.log('📋 Environment Configuration:');
-    const envStatus = this.checkEnvironment();
+    // Check configuration
+    console.log('📋 Configuration Status:');
+    const configStatus = await this.checkConfiguration();
     
-    if (!envStatus.valid) {
-      console.log('\n❌ Environment configuration incomplete. Please run setup first.');
+    if (!configStatus.valid) {
+      console.log('\n❌ Configuration incomplete. Please run salesforce_setup tool first.');
       return;
     }
 
     // Check authentication
     console.log('\n🔐 Authentication Status:');
-    await this.checkAuthentication();
+    await this.checkAuthentication(configStatus.credentials);
     
     console.log('\n💡 Next Steps:');
     console.log('- If authentication failed, run: npm run setup');
@@ -38,36 +35,46 @@ class StatusChecker {
     console.log('- Use npm run config-help for Connected App setup');
   }
 
-  checkEnvironment() {
-    const missing = [];
-    const config = {};
-
-    for (const envVar of this.requiredEnvVars) {
-      const value = process.env[envVar];
-      if (!value) {
-        missing.push(envVar);
-        console.log(`❌ ${envVar}: Not set`);
-      } else {
-        config[envVar] = value;
-        console.log(`✅ ${envVar}: ${this.maskSensitive(envVar, value)}`);
+  async checkConfiguration() {
+    try {
+      const credentials = await this.fileStorage.getCredentials();
+      
+      if (!credentials) {
+        console.log('❌ No credentials found in ~/.mcp-salesforce.json');
+        console.log('   Run the salesforce_setup tool to configure credentials');
+        return { valid: false };
       }
-    }
 
-    if (missing.length > 0) {
-      console.log('\n❌ Missing environment variables:');
-      missing.forEach(envVar => console.log(`   - ${envVar}`));
-      return { valid: false, missing };
-    }
+      const { clientId, clientSecret, instanceUrl } = credentials;
+      
+      if (!clientId || !clientSecret || !instanceUrl) {
+        console.log('❌ Incomplete credentials in ~/.mcp-salesforce.json');
+        console.log('   Run the salesforce_setup tool to reconfigure credentials');
+        return { valid: false };
+      }
 
-    return { valid: true, config };
+      console.log(`✅ Client ID: ${this.maskSensitive('CLIENT_ID', clientId)}`);
+      console.log(`✅ Client Secret: ${this.maskSensitive('CLIENT_SECRET', clientSecret)}`);
+      console.log(`✅ Instance URL: ${instanceUrl}`);
+      
+      // Check API config
+      const apiConfig = await this.fileStorage.getApiConfig();
+      console.log(`✅ API Version: ${apiConfig.apiVersion}`);
+      console.log(`✅ Callback Port: ${apiConfig.callbackPort}`);
+
+      return { valid: true, credentials };
+    } catch (error) {
+      console.log(`❌ Configuration check failed: ${error.message}`);
+      return { valid: false };
+    }
   }
 
-  async checkAuthentication() {
+  async checkAuthentication(credentials) {
     try {
       const tokenManager = new TokenManager(
-        process.env.SALESFORCE_CLIENT_ID,
-        process.env.SALESFORCE_CLIENT_SECRET,
-        process.env.SALESFORCE_INSTANCE_URL
+        credentials.clientId,
+        credentials.clientSecret,
+        credentials.instanceUrl
       );
 
       const hasTokens = await tokenManager.initialize();
@@ -79,7 +86,7 @@ class StatusChecker {
       }
 
       const tokenInfo = tokenManager.getTokenInfo();
-      console.log('✅ Tokens found in Keychain');
+      console.log('✅ Tokens found in ~/.mcp-salesforce.json');
       console.log(`   Instance: ${tokenInfo.instance_url}`);
       
       if (tokenInfo.expires_at) {

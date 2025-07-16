@@ -18,8 +18,8 @@ export async function repairCredentials() {
       // We need to ask the user for the credentials
       console.log('❗ We need to restore the missing credentials.');
       console.log('Please provide the following information:');
-      console.log('1. SALESFORCE_CLIENT_ID (Consumer Key from your Connected App)');
-      console.log('2. SALESFORCE_CLIENT_SECRET (Consumer Secret from your Connected App)');
+      console.log('1. Client ID (Consumer Key from your Connected App)');
+      console.log('2. Client Secret (Consumer Secret from your Connected App)');
       console.log('');
       console.log('You can find these in your Salesforce Setup > App Manager > Your Connected App > View');
       

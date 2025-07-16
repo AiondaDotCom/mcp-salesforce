@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { SalesforceClient } from '../src/salesforce/client.js';
+import { FileStorageManager } from '../src/auth/file-storage.js';
 import { config } from 'dotenv';
 
 // Load environment variables
@@ -10,20 +11,21 @@ async function debugQuery() {
   try {
     console.log('🔧 Starting Salesforce Query Debug...\n');
 
-    // Check environment variables
-    const requiredVars = ['SALESFORCE_CLIENT_ID', 'SALESFORCE_CLIENT_SECRET', 'SALESFORCE_INSTANCE_URL'];
-    const missing = requiredVars.filter(varName => !process.env[varName]);
+    // Check configuration
+    const fileStorage = new FileStorageManager();
+    const credentials = await fileStorage.getCredentials();
     
-    if (missing.length > 0) {
-      console.error(`❌ Missing environment variables: ${missing.join(', ')}`);
+    if (!credentials) {
+      console.error('❌ No credentials found in ~/.mcp-salesforce.json');
+      console.error('Please run the salesforce_setup tool first');
       process.exit(1);
     }
 
     // Initialize client
     const client = new SalesforceClient(
-      process.env.SALESFORCE_CLIENT_ID,
-      process.env.SALESFORCE_CLIENT_SECRET,
-      process.env.SALESFORCE_INSTANCE_URL
+      credentials.clientId,
+      credentials.clientSecret,
+      credentials.instanceUrl
     );
 
     await client.initialize();

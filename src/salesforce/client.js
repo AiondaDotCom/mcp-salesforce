@@ -1,5 +1,6 @@
 import jsforce from 'jsforce';
 import { TokenManager } from '../auth/token-manager.js';
+import { FileStorageManager } from '../auth/file-storage.js';
 
 export class SalesforceClient {
   constructor(clientId, clientSecret, instanceUrl) {
@@ -44,10 +45,14 @@ export class SalesforceClient {
       const accessToken = await this.tokenManager.getValidAccessToken();
       const tokenInfo = this.tokenManager.getTokenInfo();
 
+      // Get API version from config file
+      const fileStorage = new FileStorageManager();
+      const apiConfig = await fileStorage.getApiConfig();
+
       this.connection = new jsforce.Connection({
         instanceUrl: tokenInfo.instance_url,
         accessToken: accessToken,
-        version: process.env.SALESFORCE_API_VERSION || '58.0'
+        version: apiConfig.apiVersion
       });
 
       // Test connection

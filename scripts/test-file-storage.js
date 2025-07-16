@@ -52,11 +52,20 @@ async function testFileStorage() {
 async function testTokenManager() {
   console.log('\n🔧 Testing Token Manager\n');
 
-  // These would normally come from environment variables
+  // Get credentials from config file
+  const fileStorage = new FileStorageManager();
+  const credentials = await fileStorage.getCredentials();
+  
+  if (!credentials) {
+    console.log('❌ No credentials found in ~/.mcp-salesforce.json');
+    console.log('Please run the salesforce_setup tool first');
+    return;
+  }
+
   const tokenManager = new TokenManager(
-    process.env.SALESFORCE_CLIENT_ID || 'test_client_id',
-    process.env.SALESFORCE_CLIENT_SECRET || 'test_client_secret',
-    process.env.SALESFORCE_INSTANCE_URL || 'https://test.salesforce.com'
+    credentials.clientId,
+    credentials.clientSecret,
+    credentials.instanceUrl
   );
 
   // Test initialization

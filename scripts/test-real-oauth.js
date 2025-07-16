@@ -10,6 +10,7 @@
 import { TokenManager } from './src/auth/token-manager.js';
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
+import { homedir } from 'os';
 
 console.log('🌟 Real OAuth Authentication Test');
 console.log('=================================\n');
@@ -21,7 +22,7 @@ function loadConfig() {
   const configPaths = [
     './config.json',
     './salesforce-config.json',
-    process.env.HOME + '/.config/mcp-salesforce/config.json'
+    join(homedir(), '.config/mcp-salesforce/config.json')
   ];
   
   for (const configPath of configPaths) {

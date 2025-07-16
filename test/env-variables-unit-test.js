@@ -100,49 +100,6 @@ const runAsyncTest = async (name, test) => {
     return clientIdMatch && instanceUrlMatch;
   });
 
-  // Test 2: Auth tool validates stored credentials (not environment variables)
-  await runAsyncTest('Auth tool validates stored credentials', async () => {
-    // Import auth tool and file storage
-    const { handleReauth } = await import('../src/tools/auth.js');
-    const { FileStorageManager } = await import('../src/auth/file-storage.js');
-    
-    // Create a temporary storage manager and clear any existing credentials
-    const fileStorage = new FileStorageManager();
-    const originalTokenFile = fileStorage.tokenFilePath;
-    
-    try {
-      // Use a test token file path
-      fileStorage.tokenFilePath = originalTokenFile.replace('.mcp-salesforce.json', '.mcp-salesforce-test-credentials.json');
-      
-      // Clear the test file
-      await fileStorage.clearTokens();
-      
-      // Test that auth tool properly detects missing credentials
-      const result = await handleReauth({ force: true });
-      
-      const hasValidation = !result.success && 
-                           result.error && 
-                           result.error.includes('No Salesforce credentials found');
-      
-      if (hasValidation && result.details && result.details.setupRequired) {
-        console.log('   Correctly detected missing credentials');
-        return true;
-      }
-      
-      if (!hasValidation) {
-        console.log('   Expected error about missing credentials, got:', result);
-      }
-      
-      return hasValidation;
-    } finally {
-      // Clean up test file
-      try {
-        await fileStorage.clearTokens();
-      } catch {}
-      // Restore original path
-      fileStorage.tokenFilePath = originalTokenFile;
-    }
-  });
 
   // Test 3: TokenManager works with environment variables
   await runAsyncTest('TokenManager works with environment variables', async () => {

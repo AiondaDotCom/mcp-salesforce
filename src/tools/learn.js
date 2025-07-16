@@ -10,13 +10,13 @@ import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { debug as logger } from '../utils/debug.js';
+import { getCacheFilePath, ensureCacheDirectory } from '../utils/cache.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Path for storing the learned installation data
-const INSTALLATION_CACHE_DIR = path.join(__dirname, '../../cache');
-const INSTALLATION_FILE = path.join(INSTALLATION_CACHE_DIR, 'salesforce-installation.json');
+const INSTALLATION_FILE = getCacheFilePath('salesforce-installation.json');
 
 export const salesforceLearnTool = {
   name: "salesforce_learn",
@@ -331,13 +331,6 @@ function isSystemManagedField(field) {
   return false;
 }
 
-async function ensureCacheDirectory() {
-  try {
-    await fs.access(INSTALLATION_CACHE_DIR);
-  } catch {
-    await fs.mkdir(INSTALLATION_CACHE_DIR, { recursive: true });
-  }
-}
 
 async function getExistingDocumentation() {
   try {

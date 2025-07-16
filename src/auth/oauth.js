@@ -24,8 +24,8 @@ export class OAuthFlow {
     this.clientSecret = clientSecret;
     this.instanceUrl = instanceUrl.replace(/\/$/, ''); // Remove trailing slash
     this.callbackPort = callbackPort || this.getPreferredPort();
-    this.state = crypto.randomBytes(32).toString('hex');
-    this.stateExpiration = Date.now() + (10 * 60 * 1000); // 10 minutes
+    this.state = null; // Will be generated fresh for each auth attempt
+    this.stateExpiration = null;
     this.server = null;
     this.retryCount = 0;
     this.maxRetries = 3;
@@ -137,6 +137,22 @@ export class OAuthFlow {
    * Start the OAuth flow with automatic port fallback
    */
   async startFlow() {
+    // Clean up any existing server
+    if (this.server) {
+      try {
+        this.server.close();
+        logger.log('🧹 Closed existing OAuth server');
+      } catch (error) {
+        logger.log('⚠️ Error closing existing server:', error.message);
+      }
+    }
+    
+    // Generate fresh state for this auth attempt
+    this.state = crypto.randomBytes(32).toString('hex');
+    this.stateExpiration = Date.now() + (10 * 60 * 1000);
+    
+    logger.log(`🔐 Generated fresh OAuth state: ${this.state.substring(0, 16)}...`);
+    
     return new Promise((resolve, reject) => {
       const app = express();
       let resolved = false;

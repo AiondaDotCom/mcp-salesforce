@@ -1,5 +1,7 @@
 # MCP Salesforce Server
 
+[![CI](https://github.com/AiondaDotCom/mcp-salesforce/actions/workflows/ci.yml/badge.svg)](https://github.com/AiondaDotCom/mcp-salesforce/actions/workflows/ci.yml)
+
 A **Model Context Protocol (MCP) server** that provides seamless integration with Salesforce using OAuth authentication. This server enables AI assistants like Claude to interact with any Salesforce organization through a secure, generic interface.
 
 ## ✨ Features
@@ -11,6 +13,7 @@ A **Model Context Protocol (MCP) server** that provides seamless integration wit
 - **🧠 Smart Installation Learning** - Analyzes your complete Salesforce setup to provide intelligent assistance
 - **🔍 Dynamic Schema Discovery** - Automatically adapts to your Salesforce configuration
 - **🔒 Secure Token Storage** - File-based storage with strict permissions for production-grade security
+- **🏠 Cross-Platform Home Directory Storage** - Credentials and cache stored in user's home directory
 - **📝 Full CRUD Operations** - Query, create, update, and delete any Salesforce records
 - **📊 Schema Inspection** - Get detailed information about objects and fields
 - **💡 Context-Aware Suggestions** - Provides intelligent field and object name suggestions
@@ -23,7 +26,7 @@ A **Model Context Protocol (MCP) server** that provides seamless integration wit
 ### Prerequisites
 
 - **Node.js 18+**
-- **macOS** (required for secure token storage)
+- **macOS** (required for secure credential storage)
 - **Salesforce Connected App** with OAuth configured
 
 ### Installation Options
@@ -37,12 +40,7 @@ Use NPX to run the MCP server without any permanent installation:
   "mcpServers": {
     "salesforce": {
       "command": "npx",
-      "args": ["@aiondadotcom/mcp-salesforce"],
-      "env": {
-        "SALESFORCE_CLIENT_ID": "your-client-id",
-        "SALESFORCE_CLIENT_SECRET": "your-client-secret",
-        "SALESFORCE_INSTANCE_URL": "https://yourorg.salesforce.com"
-      }
+      "args": ["@aiondadotcom/mcp-salesforce"]
     }
   }
 }
@@ -78,22 +76,18 @@ For development or customization:
    npm install
    ```
 
-2. **Configure environment variables**:
-   ```bash
-   cp .env.example .env
-   # Edit .env with your Salesforce Connected App details
-   ```
+2. **Configure credentials**: Use the `salesforce_setup` tool to configure your credentials when prompted
 
 3. **Add to Claude Desktop** using local path (see [Configuration](#configuration) below)
 
 ### 🎯 **Start Using**
 
-That's it! Claude will automatically handle authentication when you first use any Salesforce tool.
+That's it! Claude will automatically handle setup and authentication when you first use any Salesforce tool.
 
-**✨ No More Manual Setup!** 
-- No need to run `npm run setup`
-- No terminal authentication required
-- Claude automatically detects when authentication is needed
+**✨ Interactive Setup Process!** 
+- Use the `salesforce_setup` tool to configure your credentials
+- Claude will ask you for your Salesforce Connected App details
+- Credentials are stored securely in your home directory
 - Seamless OAuth flow directly from Claude Desktop
 
 **🧠 Smart Learning System**
@@ -155,19 +149,29 @@ npx -p @aiondadotcom/mcp-salesforce mcp-salesforce setup
 
 2. After saving, copy the **Consumer Key** and **Consumer Secret**
 
-### Environment Configuration
+### Credential Configuration
 
-Create a `.env` file with your Salesforce details:
+Configure your credentials using the `salesforce_setup` tool when you first use the application:
 
-```bash
-SALESFORCE_CLIENT_ID=3MVG9...your-consumer-key...
-SALESFORCE_CLIENT_SECRET=1234567890...your-consumer-secret...
-SALESFORCE_INSTANCE_URL=https://yourorg.salesforce.com
+1. **Interactive Setup**: Claude will prompt you for your Salesforce credentials
+2. **Client ID**: Your Salesforce Connected App Consumer Key
+3. **Client Secret**: Your Salesforce Connected App Consumer Secret  
+4. **Instance URL**: Your Salesforce organization URL (e.g., `https://mycompany.salesforce.com`)
 
-# Optional settings
-SALESFORCE_API_VERSION=v58.0
-SALESFORCE_TIMEOUT=30000
-LOG_LEVEL=info
+The tool will validate your input and store credentials securely in `~/.mcp-salesforce.json` with restricted permissions (600).
+
+**📁 File Locations:**
+- **Credentials**: `~/.mcp-salesforce.json` (contains OAuth tokens and credentials)
+- **Cache**: `~/.mcp-salesforce-cache/` (contains learned Salesforce schema and context)
+- **Cross-Platform**: Works on Windows, macOS, and Linux
+
+**Example interaction:**
+```
+Claude: I need to set up your Salesforce credentials first. Please use the salesforce_setup tool with your credentials.
+
+You: Use the salesforce_setup tool with clientId: "3MVG9...", clientSecret: "1234567890...", instanceUrl: "https://mycompany.salesforce.com"
+
+Claude: ✅ Salesforce credentials configured successfully! You can now use other Salesforce tools.
 ```
 
 ### Claude Desktop Integration
@@ -181,12 +185,7 @@ Add this to your Claude Desktop MCP configuration (`~/Library/Application Suppor
   "mcpServers": {
     "salesforce": {
       "command": "npx",
-      "args": ["@aiondadotcom/mcp-salesforce"],
-      "env": {
-        "SALESFORCE_CLIENT_ID": "your-client-id",
-        "SALESFORCE_CLIENT_SECRET": "your-client-secret", 
-        "SALESFORCE_INSTANCE_URL": "https://yourorg.salesforce.com"
-      }
+      "args": ["@aiondadotcom/mcp-salesforce"]
     }
   }
 }
@@ -201,12 +200,7 @@ For development or customized installations:
   "mcpServers": {
     "salesforce": {
       "command": "node",
-      "args": ["/path/to/mcp-salesforce/src/index.js"],
-      "env": {
-        "SALESFORCE_CLIENT_ID": "your-client-id",
-        "SALESFORCE_CLIENT_SECRET": "your-client-secret", 
-        "SALESFORCE_INSTANCE_URL": "https://yourorg.salesforce.com"
-      }
+      "args": ["/path/to/mcp-salesforce/src/index.js"]
     }
   }
 }
@@ -221,12 +215,7 @@ For VS Code with MCP extension:
   "servers": {
     "salesforce": {
       "command": "npx",
-      "args": ["@aiondadotcom/mcp-salesforce"],
-      "env": {
-        "SALESFORCE_CLIENT_ID": "your-client-id",
-        "SALESFORCE_CLIENT_SECRET": "your-client-secret",
-        "SALESFORCE_INSTANCE_URL": "https://yourorg.salesforce.com"
-      }
+      "args": ["@aiondadotcom/mcp-salesforce"]
     }
   }
 }

@@ -11,10 +11,11 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { getInstallationDocumentation, hasInstallationDocumentation } from './learn.js';
 import { debug } from '../utils/debug.js';
+import { getCacheFilePath, ensureCacheDirectory } from '../utils/cache.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const CONTEXT_FILE = path.join(__dirname, '../../cache', 'salesforce-context.json');
+const CONTEXT_FILE = getCacheFilePath('salesforce-context.json');
 
 export const salesforceLearnContextTool = {
   name: "salesforce_learn_context",
@@ -724,23 +725,8 @@ async function saveContext(context) {
   context.updated_at = new Date().toISOString();
   
   // Ensure cache directory exists
-  const cacheDir = path.dirname(CONTEXT_FILE);
+  await ensureCacheDirectory();
   debug.log('🔍 saveContext - CONTEXT_FILE:', CONTEXT_FILE);
-  debug.log('🔍 saveContext - cacheDir:', cacheDir);
-  
-  try {
-    await fs.access(cacheDir);
-    debug.log('✅ Cache directory exists');
-  } catch (error) {
-    debug.log('📁 Creating cache directory:', cacheDir);
-    try {
-      await fs.mkdir(cacheDir, { recursive: true });
-      debug.log('✅ Cache directory created successfully');
-    } catch (mkdirError) {
-      debug.error('❌ Failed to create cache directory:', mkdirError);
-      throw mkdirError;
-    }
-  }
   
   await fs.writeFile(CONTEXT_FILE, JSON.stringify(context, null, 2));
 }

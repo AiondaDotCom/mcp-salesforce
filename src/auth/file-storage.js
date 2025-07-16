@@ -1,13 +1,10 @@
 import fs from 'fs/promises';
 import path from 'path';
-import { fileURLToPath } from 'url';
+import os from 'os';
 import { logger } from '../utils/debug.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Token file path in cache directory
-const TOKEN_FILE_PATH = path.join(__dirname, '../../cache/salesforce-tokens.json');
+// Token file path in home directory
+const TOKEN_FILE_PATH = path.join(os.homedir(), '.mcp-salesforce.json');
 
 export class FileStorageManager {
   constructor() {
@@ -15,16 +12,105 @@ export class FileStorageManager {
   }
 
   /**
-   * Store tokens securely in cache directory
+   * Store credentials securely in home directory
+   * @param {Object} credentials - Object containing clientId, clientSecret, instanceUrl
+   */
+  async storeCredentials(credentials) {
+    try {
+      const existingData = await this.getAllData();
+      
+      const credentialData = {
+        ...existingData,
+        clientId: credentials.clientId,
+        clientSecret: credentials.clientSecret,
+        instanceUrl: credentials.instanceUrl,
+        credentialsStoredAt: new Date().toISOString()
+      };
+
+      // Write credentials to file with restricted permissions (600 = rw-------)
+      await fs.writeFile(this.tokenFilePath, JSON.stringify(credentialData, null, 2), { mode: 0o600 });
+      
+      // Explicitly set file permissions to ensure security
+      await fs.chmod(this.tokenFilePath, 0o600);
+      
+      logger.log('✅ Credentials stored securely in home directory (permissions: 600)');
+    } catch (error) {
+      throw new Error(`Failed to store credentials: ${error.message}`);
+    }
+  }
+
+  /**
+   * Retrieve credentials from file
+   * @returns {Object} Credential data or null if not found
+   */
+  async getCredentials() {
+    try {
+      const data = await this.getAllData();
+      
+      if (!data || !data.clientId || !data.clientSecret || !data.instanceUrl) {
+        return null;
+      }
+
+      return {
+        clientId: data.clientId,
+        clientSecret: data.clientSecret,
+        instanceUrl: data.instanceUrl,
+        credentialsStoredAt: data.credentialsStoredAt
+      };
+    } catch (error) {
+      if (error.code === 'ENOENT') {
+        return null;
+      }
+      throw new Error(`Failed to retrieve credentials: ${error.message}`);
+    }
+  }
+
+  /**
+   * Check if credentials exist
+   * @returns {boolean} True if credentials exist
+   */
+  async hasCredentials() {
+    try {
+      const credentials = await this.getCredentials();
+      return credentials !== null;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Get all data from file (credentials and tokens)
+   * @returns {Object} All data or empty object if not found
+   */
+  async getAllData() {
+    try {
+      const data = await fs.readFile(this.tokenFilePath, 'utf8');
+      return JSON.parse(data);
+    } catch (error) {
+      if (error.code === 'ENOENT') {
+        return {};
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Store tokens securely in home directory
    * @param {Object} tokens - Object containing access_token and refresh_token
    */
   async storeTokens(tokens) {
     try {
-      // Ensure cache directory exists
-      const cacheDir = path.dirname(this.tokenFilePath);
-      await fs.mkdir(cacheDir, { recursive: true });
-
+      const existingData = await this.getAllData();
+      
+      // Ensure credentials are preserved
       const tokenData = {
+        // Keep existing credentials if they exist
+        clientId: existingData.clientId || null,
+        clientSecret: existingData.clientSecret || null,
+        instanceUrl: existingData.instanceUrl || tokens.instance_url,
+        credentialsStoredAt: existingData.credentialsStoredAt || null,
+        
+        // Update tokens
         access_token: tokens.access_token,
         refresh_token: tokens.refresh_token,
         expires_at: tokens.expires_at || null,
@@ -45,7 +131,7 @@ export class FileStorageManager {
         logger.warn(`⚠️ Warning: Token file permissions are ${permissions.toString(8)}, expected 600`);
       }
       
-      logger.log('✅ Tokens stored securely in cache directory (permissions: 600)');
+      logger.log('✅ Tokens stored securely in home directory (permissions: 600)');
     } catch (error) {
       throw new Error(`Failed to store tokens in file: ${error.message}`);
     }
@@ -57,17 +143,20 @@ export class FileStorageManager {
    */
   async getTokens() {
     try {
-      const data = await fs.readFile(this.tokenFilePath, 'utf8');
-      const tokenData = JSON.parse(data);
+      const data = await this.getAllData();
       
       // Validate token structure
-      if (!tokenData.access_token || !tokenData.refresh_token) {
-        logger.warn('⚠️ Invalid token structure found, removing file');
-        await this.clearTokens();
+      if (!data || !data.access_token || !data.refresh_token) {
         return null;
       }
 
-      return tokenData;
+      return {
+        access_token: data.access_token,
+        refresh_token: data.refresh_token,
+        expires_at: data.expires_at,
+        instance_url: data.instance_url,
+        stored_at: data.stored_at
+      };
     } catch (error) {
       if (error.code === 'ENOENT') {
         // File not found - no tokens stored

@@ -9,12 +9,14 @@ import { fileURLToPath } from 'url';
 
 // Import Salesforce client and tools
 import { SalesforceClient } from './salesforce/client.js';
+import { FileStorageManager } from './auth/file-storage.js';
 import { queryTool, executeQuery } from './tools/query.js';
 import { createTool, executeCreate } from './tools/create.js';
 import { updateTool, executeUpdate } from './tools/update.js';
 import { deleteTool, executeDelete } from './tools/delete.js';
 import { describeTool, executeDescribe } from './tools/describe.js';
 import { reauth, handleReauth } from './tools/auth.js';
+import { setupTool, handleSalesforceSetup } from './tools/setup.js';
 import { salesforceLearnTool, handleSalesforceLearn } from './tools/learn.js';
 import { salesforceInstallationInfoTool, handleSalesforceInstallationInfo } from './tools/installation-info.js';
 import { salesforceLearnContextTool, handleSalesforceLearnContext } from './tools/learn-context.js';
@@ -37,12 +39,12 @@ if (args.includes('--help') || args.includes('-h')) {
 
 USAGE:
   npx -p @aiondadotcom/mcp-salesforce mcp-salesforce              # Start MCP server
-  npx -p @aiondadotcom/mcp-salesforce mcp-salesforce setup       # Run setup
   
-ENVIRONMENT VARIABLES:
-  SALESFORCE_CLIENT_ID      - OAuth Client ID
-  SALESFORCE_CLIENT_SECRET  - OAuth Client Secret  
-  SALESFORCE_INSTANCE_URL   - Salesforce instance URL
+SETUP:
+  Use the salesforce_setup tool to configure your Salesforce credentials
+  - Client ID (Consumer Key from Connected App)
+  - Client Secret (Consumer Secret from Connected App)
+  - Instance URL (e.g., https://mycompany.salesforce.com)
   
 DOCUMENTATION:
   https://github.com/AiondaDotCom/mcp-salesforce
@@ -95,6 +97,7 @@ class MCPSalesforceServer {
     this.server.setRequestHandler(ListToolsRequestSchema, async () => {
       return {
         tools: [
+          setupTool,
           salesforceLearnTool,
           salesforceInstallationInfoTool,
           salesforceLearnContextTool,
@@ -124,6 +127,10 @@ class MCPSalesforceServer {
 
         // Route to appropriate tool handler
         switch (name) {
+          case 'salesforce_setup':
+            // Special case: setup doesn't need existing client
+            return await handleSalesforceSetup(args);
+          
           case 'salesforce_query':
             return await executeQuery(this.salesforceClient, args);
           
@@ -200,23 +207,21 @@ class MCPSalesforceServer {
   }
 
   async initializeSalesforceClient() {
-    const requiredEnvVars = [
-      'SALESFORCE_CLIENT_ID',
-      'SALESFORCE_CLIENT_SECRET',
-      'SALESFORCE_INSTANCE_URL'
-    ];
+    // Get stored credentials
+    const fileStorage = new FileStorageManager();
+    const credentials = await fileStorage.getCredentials();
 
-    // Check for required environment variables
-    const missing = requiredEnvVars.filter(envVar => !process.env[envVar]);
-    if (missing.length > 0) {
-      throw new Error(`Missing required environment variables: ${missing.join(', ')}. Please check your .env file.`);
+    if (!credentials) {
+      // Create a client without credentials - it will prompt for setup when needed
+      this.salesforceClient = new SalesforceClient();
+      return;
     }
 
-    // Create and initialize Salesforce client
+    // Create and initialize Salesforce client with stored credentials
     this.salesforceClient = new SalesforceClient(
-      process.env.SALESFORCE_CLIENT_ID,
-      process.env.SALESFORCE_CLIENT_SECRET,
-      process.env.SALESFORCE_INSTANCE_URL
+      credentials.clientId,
+      credentials.clientSecret,
+      credentials.instanceUrl
     );
 
     await this.salesforceClient.initialize();

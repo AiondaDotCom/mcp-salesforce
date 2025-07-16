@@ -1,4 +1,5 @@
 import { TokenManager } from '../auth/token-manager.js';
+import { FileStorageManager } from '../auth/file-storage.js';
 
 export const reauth = {
   name: 'salesforce_auth',
@@ -20,25 +21,25 @@ export async function handleReauth(args) {
   const { force = false } = args;
 
   try {
-    // Validate environment variables
-    const requiredVars = ['SALESFORCE_CLIENT_ID', 'SALESFORCE_CLIENT_SECRET', 'SALESFORCE_INSTANCE_URL'];
-    const missingVars = requiredVars.filter(varName => !process.env[varName]);
+    // Get stored credentials
+    const fileStorage = new FileStorageManager();
+    const credentials = await fileStorage.getCredentials();
 
-    if (missingVars.length > 0) {
+    if (!credentials) {
       return {
         success: false,
-        error: `Missing required environment variables: ${missingVars.join(', ')}. Please check your MCP configuration.`,
+        error: 'No Salesforce credentials found. Please run the salesforce_setup tool first to configure your credentials.',
         details: {
-          missingVariables: missingVars,
-          requiredVariables: requiredVars
+          setupRequired: true,
+          requiredCredentials: ['clientId', 'clientSecret', 'instanceUrl']
         }
       };
     }
 
     const tokenManager = new TokenManager(
-      process.env.SALESFORCE_CLIENT_ID,
-      process.env.SALESFORCE_CLIENT_SECRET,
-      process.env.SALESFORCE_INSTANCE_URL
+      credentials.clientId,
+      credentials.clientSecret,
+      credentials.instanceUrl
     );
 
     // Check current token status if not forcing

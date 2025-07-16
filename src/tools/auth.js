@@ -95,7 +95,7 @@ export async function handleReauth(args) {
       },
       nextSteps: [
         'Your MCP Salesforce tools should now work normally',
-        'Tokens are stored securely in macOS Keychain',
+        'Tokens are stored securely in your home directory with 600 permissions',
         'They will auto-refresh before expiration'
       ]
     };

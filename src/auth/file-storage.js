@@ -104,7 +104,7 @@ export class FileStorageManager {
       const data = await this.getAllData();
       return {
         apiVersion: data.apiVersion || '58.0',
-        callbackPort: data.callbackPort || 8080,
+        callbackPort: data.callbackPort || 9876,
         timeout: data.timeout || 30000,
         callbackUrl: data.callbackUrl || null
       };
@@ -112,7 +112,7 @@ export class FileStorageManager {
       // Return defaults if config file doesn't exist
       return {
         apiVersion: '58.0',
-        callbackPort: 8080,
+        callbackPort: 9876,
         timeout: 30000,
         callbackUrl: null
       };

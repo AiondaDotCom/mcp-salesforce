@@ -35,8 +35,8 @@ export class OAuthFlow {
    * Get preferred port (8080 first, then random if not available)
    */
   getPreferredPort() {
-    // Always try to use port 8080 first (matches most Connected App configurations)
-    return 8080;
+    // Default port for OAuth callback (must match Connected App configuration)
+    return 9876;
   }
 
   /**

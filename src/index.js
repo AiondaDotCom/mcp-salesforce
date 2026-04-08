@@ -392,12 +392,4 @@ process.on('uncaughtException', (error) => {
   process.exit(1);
 });
 
-// Start the server
-if (import.meta.url === `file://${process.argv[1]}`) {
-  const server = new MCPSalesforceServer();
-  server.run().catch(error => {
-    process.exit(1);
-  });
-}
-
 export { MCPSalesforceServer };

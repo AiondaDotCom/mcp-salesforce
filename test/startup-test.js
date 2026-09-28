@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { realpathSync } from 'node:fs';
+import { readFileSync, realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
+
+const { version } = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
 
 for (const entrypoint of ['src/index.js', 'bin/mcp-salesforce.js']) {
   test(`${entrypoint} responds to MCP initialization`, () => {
@@ -34,6 +36,7 @@ for (const entrypoint of ['src/index.js', 'bin/mcp-salesforce.js']) {
     assert.equal(response.error, undefined);
     assert.equal(response.result.protocolVersion, request.params.protocolVersion);
     assert.equal(response.result.serverInfo.name, 'mcp-salesforce');
+    assert.equal(response.result.serverInfo.version, version);
     assert.deepEqual(response.result.capabilities.tools, {});
   });
 }

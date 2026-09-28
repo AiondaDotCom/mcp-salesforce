@@ -348,7 +348,7 @@ const runAsyncTest = async (name, test) => {
     const isInitialized = oauth.clientId === testEnvVars.SALESFORCE_CLIENT_ID &&
                          oauth.clientSecret === testEnvVars.SALESFORCE_CLIENT_SECRET &&
                          oauth.instanceUrl === testEnvVars.SALESFORCE_INSTANCE_URL &&
-                         oauth.callbackPort === 8080; // Default port
+                         oauth.callbackPort === 9876; // Default port documented for the Connected App
     
     if (!isInitialized) {
       console.log('   OAuth initialization failed');

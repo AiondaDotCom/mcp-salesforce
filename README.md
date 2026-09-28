@@ -142,7 +142,8 @@ npx -p @aiondadotcom/mcp-salesforce mcp-salesforce setup
    - **API Name**: mcp_salesforce_integration
    - **Contact Email**: Your email
    - **Enable OAuth Settings**: ✅ Yes
-   - **Callback URL**: `http://localhost:8080/callback` (will be auto-generated)
+   - **Callback URL**: `http://localhost:9876/callback`
+     > Port 9876 was chosen deliberately to avoid conflicts with common development servers (8080, 8000, 3000) and well-known services.
    - **Selected OAuth Scopes**:
      - Manage user data via APIs (api)
      - Perform requests at any time (refresh_token, offline_access)

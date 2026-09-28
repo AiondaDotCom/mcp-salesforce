@@ -120,6 +120,14 @@ class MCPSalesforceServer {
       const { name, arguments: args } = request.params;
 
       try {
+        // Handle tools that don't need an initialized client first
+        if (name === 'salesforce_setup') {
+          return await handleSalesforceSetup(args);
+        }
+        if (name === 'salesforce_auth') {
+          return await this.handleAuth(args);
+        }
+
         // Initialize Salesforce client if not already done
         if (!this.salesforceClient) {
           await this.initializeSalesforceClient();
@@ -127,10 +135,6 @@ class MCPSalesforceServer {
 
         // Route to appropriate tool handler
         switch (name) {
-          case 'salesforce_setup':
-            // Special case: setup doesn't need existing client
-            return await handleSalesforceSetup(args);
-          
           case 'salesforce_query':
             return await executeQuery(this.salesforceClient, args);
           
@@ -154,10 +158,6 @@ class MCPSalesforceServer {
           
           case 'salesforce_describe':
             return await executeDescribe(this.salesforceClient, args);
-          
-          case 'salesforce_auth':
-            // Special case: auth doesn't need existing client
-            return await this.handleAuth(args);
           
           case 'salesforce_backup':
             return await handleSalesforceBackup(args, this.salesforceClient);

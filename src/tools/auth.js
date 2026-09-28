@@ -168,7 +168,7 @@ export async function handleReauth(args) {
         error: 'Cannot start OAuth callback server - port conflict',
         details: {
           reason: 'OAuth callback port is already in use',
-          suggestion: 'Please close any other applications using ports 8080-9000 and try again'
+          suggestion: 'Please close any other applications using port 9876 and try again'
         }
       };
     }
@@ -180,7 +180,7 @@ export async function handleReauth(args) {
         errorType: error.constructor.name,
         troubleshooting: [
           'Verify your Salesforce Connected App configuration',
-          'Check that callback URLs include http://localhost:8080/callback',
+          'Check that callback URLs include http://localhost:9876/callback',
           'Ensure your Salesforce credentials are correct in MCP config',
           'Try running with force=true parameter'
         ]
